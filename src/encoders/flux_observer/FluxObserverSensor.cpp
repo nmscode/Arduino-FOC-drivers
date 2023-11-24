@@ -7,7 +7,7 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
 {
   // Derive Flux linkage from KV_rating and pole_pairs
   if (_isset(_motor.pole_pairs) && _isset(_motor.KV_rating)){
-    flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor.KV_rating/_SQRT2) * (_motor.pole_pairs * 2));
+    flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor.KV_rating) * (_motor.pole_pairs * 2));
   }
 }
 
