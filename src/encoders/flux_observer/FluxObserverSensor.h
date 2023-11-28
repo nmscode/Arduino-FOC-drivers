@@ -4,7 +4,7 @@
 #include "Arduino.h"
 #include "common/base_classes/FOCMotor.h"
 #include "common/base_classes/Sensor.h"
-
+#include "common/multi_filter.h"
 /**
   
 */
@@ -38,6 +38,7 @@ class FluxObserverSensor : public Sensor
     float angle_track = 0; // Total Electrical angle
     float bemf_threshold = 0.5; // Bemf voltage amplitude when the flux observer should start tracking
     int8_t first = 1; // To skip angle difference calculation the first time
+    extern MultiFilter filter_calc_alpha, filter_calc_beta;
 
   protected:    
     const FOCMotor& _motor;

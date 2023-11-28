@@ -9,6 +9,8 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   if (_isset(_motor.pole_pairs) && _isset(_motor.KV_rating)){
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor.KV_rating) * (_motor.pole_pairs * 2));
   }
+  filter_calc_alpha = MultiFilter((1/(_2PI*_motor.hfi_frequency)));
+  filter_calc_beta = MultiFilter((1/(_2PI*_motor.hfi_frequency)));
 }
 
 
@@ -32,8 +34,6 @@ void FluxObserverSensor::update() {
   if (abs(bemf < bemf_threshold)){
     if(_motor.hfi_enabled){
         sensor_cnt = 0;
-        MultiFilter filter_calc_alpha((1/(2*_2PI*_motor.hfi_frequency)));
-        MultiFilter filter_calc_beta((1/(2*_2PI*_motor.hfi_frequency)));
         // read current phase currents
         PhaseCurrent_s current = _motor.current_sense->getPhaseCurrents();
 
