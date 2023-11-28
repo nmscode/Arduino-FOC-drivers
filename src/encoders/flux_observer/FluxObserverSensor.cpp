@@ -1,7 +1,7 @@
 #include "FluxObserverSensor.h"
 #include "common/foc_utils.h"
 #include "common/time_utils.h"
-
+#include "common/multi_filter.h"
 
 FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
 {
@@ -25,9 +25,52 @@ void FluxObserverSensor::update() {
   if (sensor_cnt++ < sensor_downsample) return;
 
   // Close to zero speed the flux observer can resonate
-  // Estimate the BEMF and exit if it's below the threshold 
+  // Estimate the BEMF and use HFI if it's below the threshold and HFI is enabled
+  bool hfi_calculated=false;
+  float electrical_angle;
   float bemf = _motor.voltage.q - _motor.phase_resistance * _motor.current.q; 
-  if (abs(bemf < bemf_threshold)) return;
+  if (abs(bemf < bemf_threshold)){
+    if(_motor.hfi_enabled){
+        sensor_cnt = 0;
+        MultiFilter filter_calc_alpha((1/(2*_2PI*_motor.hfi_frequency)));
+        MultiFilter filter_calc_beta((1/(2*_2PI*_motor.hfi_frequency)));
+        // read current phase currents
+        PhaseCurrent_s current = _motor.current_sense->getPhaseCurrents();
+
+        // calculate clarke transform
+        float i_alpha, i_beta, i_alpha_bp, i_beta_bp;
+        if(!current.c){
+            // if only two measured currents
+            i_alpha = current.a;  
+            i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
+        }if(!current.a){
+            // if only two measured currents
+            float a = -current.c - current.b;
+            i_alpha = a;  
+            i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
+        }if(!current.b){
+            // if only two measured currents
+            float b = -current.a - current.c;
+            i_alpha = current.a;  
+            i_beta = _1_SQRT3 * current.a + _2_SQRT3 * b;
+        } else {
+            // signal filtering using identity a + b + c = 0. Assumes measurement error is normally distributed.
+            float mid = (1.f/3) * (current.a + current.b + current.c);
+            float a = current.a - mid;
+            float b = current.b - mid;
+            i_alpha = a;
+            i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
+        }
+
+        i_alpha_bp=filter_calc_alpha(i_alpha)*_motor.hfi_state;
+        i_beta_bp=filter_calc_beta(i_alpha)*_motor.hfi_state;
+        electrical_angle = _normalizeAngle(atan2(i_beta_bp,i_alpha_bp));
+        hfi_calculated=true;
+    }
+    else{
+      return;
+    }
+  }
 
   sensor_cnt = 0;
 
@@ -77,7 +120,10 @@ void FluxObserverSensor::update() {
         _motor.phase_inductance * (i_beta  - i_beta_prev) ,-flux_linkage, flux_linkage);
   
   // Calculate angle
-  float electrical_angle = _normalizeAngle(atan2(flux_beta,flux_alpha));
+  if(!hfi_calculated){
+    electrical_angle = _normalizeAngle(atan2(flux_beta,flux_alpha));
+  }
+  
 
   // Electrical angle difference
   float d_electrical_angle = 0;
