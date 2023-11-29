@@ -39,56 +39,17 @@ void FluxObserverSensor::update() {
 
         // calculate clarke transform
         float i_alpha, i_beta, i_alpha_bp, i_beta_bp;
-        if(!current.c){
-            // if only two measured currents
-            i_alpha = current.a;  
-            i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
-        }if(!current.a){
-            // if only two measured currents
-            float a = -current.c - current.b;
-            i_alpha = a;  
-            i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
-        }if(!current.b){
-            // if only two measured currents
-            float b = -current.a - current.c;
-            i_alpha = current.a;  
-            i_beta = _1_SQRT3 * current.a + _2_SQRT3 * b;
-        } else {
-            // signal filtering using identity a + b + c = 0. Assumes measurement error is normally distributed.
-            float mid = (1.f/3) * (current.a + current.b + current.c);
-            float a = current.a - mid;
-            float b = current.b - mid;
-            i_alpha = a;
-            i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
-        }
-
-        i_alpha_bp=filter_calc_alpha.getBp(i_alpha)*_motor.hfi_state;
-        i_beta_bp=filter_calc_beta.getBp(i_beta)*_motor.hfi_state;
-        electrical_angle = _normalizeAngle(atan2(i_beta_bp,i_alpha_bp));
-        hfi_calculated=true;
-    }
-    else{
-      return;
-    }
-  }
-  if(!hfi_calculated){
-      sensor_cnt = 0;
-
-      // read current phase currents
-      PhaseCurrent_s current = _motor.current_sense->getPhaseCurrents();
-
-      // calculate clarke transform
-      float i_alpha, i_beta;
+        // read current phase currents
       if(!current.c){
           // if only two measured currents
           i_alpha = current.a;  
           i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
-      }if(!current.a){
+      }else if(!current.a){
           // if only two measured currents
           float a = -current.c - current.b;
           i_alpha = a;  
           i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
-      }if(!current.b){
+      }else if(!current.b){
           // if only two measured currents
           float b = -current.a - current.c;
           i_alpha = current.a;  
@@ -101,6 +62,46 @@ void FluxObserverSensor::update() {
           i_alpha = a;
           i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
       }
+
+        i_alpha_bp=filter_calc_alpha.getBp(i_alpha)*_motor.hfi_state;
+        i_beta_bp=filter_calc_beta.getBp(i_beta)*_motor.hfi_state;
+        electrical_angle = _normalizeAngle(_atan2(i_beta_bp,i_alpha_bp));
+        hfi_calculated=true;
+    }
+    else{
+      return;
+    }
+  }
+  if(!hfi_calculated){
+      sensor_cnt = 0;
+
+  // read current phase currents
+    PhaseCurrent_s current = _motor.current_sense->getPhaseCurrents();
+
+    // calculate clarke transform
+    float i_alpha, i_beta;
+    if(!current.c){
+        // if only two measured currents
+        i_alpha = current.a;  
+        i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
+    }else if(!current.a){
+        // if only two measured currents
+        float a = -current.c - current.b;
+        i_alpha = a;  
+        i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
+    }else if(!current.b){
+        // if only two measured currents
+        float b = -current.a - current.c;
+        i_alpha = current.a;  
+        i_beta = _1_SQRT3 * current.a + _2_SQRT3 * b;
+    } else {
+        // signal filtering using identity a + b + c = 0. Assumes measurement error is normally distributed.
+        float mid = (1.f/3) * (current.a + current.b + current.c);
+        float a = current.a - mid;
+        float b = current.b - mid;
+        i_alpha = a;
+        i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
+    }
 
       // This work deviates slightly from the BSD 3 clause licence.
       // The work here is entirely original to the MESC FOC project, and not based
@@ -120,10 +121,9 @@ void FluxObserverSensor::update() {
             _motor.phase_inductance * (i_beta  - i_beta_prev) ,-flux_linkage, flux_linkage);
       
       // Calculate angle
-        electrical_angle = _normalizeAngle(atan2(flux_beta,flux_alpha));
+        electrical_angle = _normalizeAngle(_atan2(flux_beta,flux_alpha));
   }
   
-
   // Electrical angle difference
   float d_electrical_angle = 0;
   if (first){
