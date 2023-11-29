@@ -52,7 +52,7 @@ void FluxObserverSensor::update() {
         e=theta_in-theta_out;
         //PLL
 
-        Ts=_motor.hfi_dt//Sample time can be dynamically calculated
+        Ts=_motor.hfi_dt/1000000.0; //Sample time can be dynamically calculated
 
         wrotor= ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2;
         theta_out = (Ts/2)*(wrotor+wrotor_prev)+theta_out_prev;
