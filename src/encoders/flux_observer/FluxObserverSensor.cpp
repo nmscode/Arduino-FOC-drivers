@@ -37,44 +37,14 @@ void FluxObserverSensor::update() {
     if(_motor.hfi_enabled){
         sensor_cnt = 0;
         // read current phase currents
-        PhaseCurrent_s current = _motor.current_sense->getPhaseCurrents();
+        PhaseCurrent_s current = _motor.current_sense->getFOCCurrents();
+        i_dh=filter_calc_d.getBp(current.d);
+        i_qh=filter_calc_q.getBp(current.q);
 
-        // calculate clarke transform
-        // read current phase currents
-      if(!current.c){
-          // if only two measured currents
-          i_alpha = current.a;  
-          i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
-      }else if(!current.a){
-          // if only two measured currents
-          float a = -current.c - current.b;
-          i_alpha = a;  
-          i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
-      }else if(!current.b){
-          // if only two measured currents
-          float b = -current.a - current.c;
-          i_alpha = current.a;  
-          i_beta = _1_SQRT3 * current.a + _2_SQRT3 * b;
-      } else {
-          // signal filtering using identity a + b + c = 0. Assumes measurement error is normally distributed.
-          float mid = (1.f/3) * (current.a + current.b + current.c);
-          float a = current.a - mid;
-          float b = current.b - mid;
-          i_alpha = a;
-          i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
-      }
-
-        i_alpha_bp=filter_calc_alpha.getBp(i_alpha);
-        i_beta_bp=filter_calc_beta.getBp(i_beta);
-        float bp_time=micros();
-        I_alpha=lpf_alpha.getLp(_motor.hfi_state*(i_alpha_bp-i_alpha_bp_prev)/(bp_time-prev_bp_time));
-        I_beta=lpf_beta.getLp(_motor.hfi_state*(i_beta_bp-i_beta_bp_prev)/(bp_time-prev_bp_time));
-        if(first){
-            I_alpha=lpf_alpha.getLpi_alpha_bp;
-            I_beta=i_beta;
-        }
         prev_bp_time=bp_time;
-        electrical_angle = _normalizeAngle(_atan2(I_beta,I_alpha));
+        electrical_angle = _normalizeAngle(_atan2(_motor.hfi_state*(i_qh-i_qh_prev),_motor.hfi_state*(i_dh-i_dh_prev)));
+        i_dh_prev=i_dh;
+        i_qh_prev=i_qh;
         hfi_calculated=true;
     }
     else{
@@ -82,7 +52,7 @@ void FluxObserverSensor::update() {
     }
   }
   if(!hfi_calculated){
-      sensor_cnt = 0;
+    sensor_cnt = 0;
 
   // read current phase currents
     PhaseCurrent_s current = _motor.current_sense->getPhaseCurrents();
