@@ -11,6 +11,8 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   }
   filter_calc_alpha = MultiFilter((1/(_motor.hfi_frequency)));
   filter_calc_beta = MultiFilter((1/(_motor.hfi_frequency)));
+  lpf_alpha = MultiFilter((1/(2*_motor.hfi_frequency)));
+  lpf_beta = MultiFilter((1/(2*_motor.hfi_frequency)));
 }
 
 
@@ -38,7 +40,6 @@ void FluxObserverSensor::update() {
         PhaseCurrent_s current = _motor.current_sense->getPhaseCurrents();
 
         // calculate clarke transform
-        float i_alpha, i_beta, i_alpha_bp, i_beta_bp;
         // read current phase currents
       if(!current.c){
           // if only two measured currents
@@ -63,9 +64,17 @@ void FluxObserverSensor::update() {
           i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
       }
 
-        i_alpha_bp=filter_calc_alpha.getBp(i_alpha)*_motor.hfi_state;
-        i_beta_bp=filter_calc_beta.getBp(i_beta)*_motor.hfi_state;
-        electrical_angle = _normalizeAngle(_atan2(i_beta_bp,i_alpha_bp));
+        i_alpha_bp=filter_calc_alpha.getBp(i_alpha);
+        i_beta_bp=filter_calc_beta.getBp(i_beta);
+        float bp_time=micros();
+        I_alpha=lpf_alpha.getLp(_motor.hfi_state*(i_alpha_bp-i_alpha_bp_prev)/(bp_time-prev_bp_time));
+        I_beta=lpf_beta.getLp(_motor.hfi_state*(i_beta_bp-i_beta_bp_prev)/(bp_time-prev_bp_time));
+        if(first){
+            I_alpha=lpf_alpha.getLpi_alpha_bp;
+            I_beta=i_beta;
+        }
+        prev_bp_time=bp_time;
+        electrical_angle = _normalizeAngle(_atan2(I_beta,I_alpha));
         hfi_calculated=true;
     }
     else{
