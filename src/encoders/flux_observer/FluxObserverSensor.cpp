@@ -41,7 +41,6 @@ void FluxObserverSensor::update() {
         i_dh=filter_calc_d.getBp(current.d);
         i_qh=filter_calc_q.getBp(current.q);
 
-        prev_bp_time=bp_time;
         electrical_angle = _normalizeAngle(_atan2(_motor.hfi_state*(i_qh-i_qh_prev),_motor.hfi_state*(i_dh-i_dh_prev)));
         i_dh_prev=i_dh;
         i_qh_prev=i_qh;
