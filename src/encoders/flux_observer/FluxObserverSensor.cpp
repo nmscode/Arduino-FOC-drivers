@@ -63,7 +63,7 @@ void FluxObserverSensor::update() {
         }
 
         i_alpha_bp=filter_calc_alpha.getBp(i_alpha)*_motor.hfi_state;
-        i_beta_bp=filter_calc_beta.getBp(i_alpha)*_motor.hfi_state;
+        i_beta_bp=filter_calc_beta.getBp(i_beta)*_motor.hfi_state;
         electrical_angle = _normalizeAngle(atan2(i_beta_bp,i_alpha_bp));
         hfi_calculated=true;
     }
