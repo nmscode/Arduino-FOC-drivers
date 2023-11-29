@@ -9,10 +9,8 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   if (_isset(_motor.pole_pairs) && _isset(_motor.KV_rating)){
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor.KV_rating) * (_motor.pole_pairs * 2));
   }
-  filter_calc_alpha = MultiFilter((1/(_motor.hfi_frequency)));
-  filter_calc_beta = MultiFilter((1/(_motor.hfi_frequency)));
-  lpf_alpha = MultiFilter((1/(2*_motor.hfi_frequency)));
-  lpf_beta = MultiFilter((1/(2*_motor.hfi_frequency)));
+  filter_calc_d = MultiFilter((1/(_motor.hfi_frequency)));
+  filter_calc_q = MultiFilter((1/(_motor.hfi_frequency)));
 }
 
 
