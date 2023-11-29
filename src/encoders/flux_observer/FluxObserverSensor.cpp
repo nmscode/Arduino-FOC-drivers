@@ -9,8 +9,15 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   if (_isset(_motor.pole_pairs) && _isset(_motor.KV_rating)){
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor.KV_rating) * (_motor.pole_pairs * 2));
   }
-  filter_calc_d = MultiFilter((1/(_motor.hfi_frequency)));
-  filter_calc_q = MultiFilter((1/(_motor.hfi_frequency)));
+  filter_calc_d = MultiFilter(2*_motor.hfi_dt);
+  filter_calc_q = MultiFilter(2*_motor.hfi_dt);
+  e_in_prev=0; //n-1 e into PLL
+  theta_out=0;
+  theta_out_prev=0;
+  wrotor=0; //PLL speed output
+  wrotor_prev=0; //n-1 PLL speed output
+  kp=1;//PI value set based on desired dampening/settling time
+  ki=1;//PI value set based on desired dampening/settling time
 }
 
 
@@ -39,10 +46,25 @@ void FluxObserverSensor::update() {
         i_dh=filter_calc_d.getBp(current.d);
         i_qh=filter_calc_q.getBp(current.q);
 
-        electrical_angle = _normalizeAngle(_atan2(_motor.hfi_state*(i_qh-i_qh_prev),_motor.hfi_state*(i_dh-i_dh_prev)));
+        theta_in = _normalizeAngle(_atan2(_motor.hfi_state*(i_qh-i_qh_prev),_motor.hfi_state*(i_dh-i_dh_prev)));
         i_dh_prev=i_dh;
         i_qh_prev=i_qh;
+        e=theta_in-theta_out;
+        //PLL
+
+        Ts=_motor.hfi_dt//Sample time can be dynamically calculated
+
+        wrotor= ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2;
+        theta_out = (Ts/2)*(wrotor+wrotor_prev)+theta_out_prev;
+
+        //Shift values over
+        wrotor_prev=wrotor; //Maybe add a counter to offset?
+        e_in_prev1=e;
+        theta_out_prev=theta_out;
+
+        //Set angle
         hfi_calculated=true;
+        electrical_angle=theta_out;
     }
     else{
       return;

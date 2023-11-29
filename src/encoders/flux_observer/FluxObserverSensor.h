@@ -39,6 +39,7 @@ class FluxObserverSensor : public Sensor
     float bemf_threshold = 0.5; // Bemf voltage amplitude when the flux observer should start tracking
     int8_t first = 1; // To skip angle difference calculation the first time
     float i_dh, i_qh, i_dh_prev, i_qh_prev;
+    float Ts, e, e_in_prev, theta_in, theta_out, theta_out_prev, wrotor, wrotor_prev, kp, ki;
     extern MultiFilter filter_calc_d, filter_calc_q;
 
   protected:    
