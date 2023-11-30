@@ -9,15 +9,17 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   if (_isset(_motor.pole_pairs) && _isset(_motor.KV_rating)){
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor.KV_rating) * (_motor.pole_pairs * 2));
   }
-  filter_calc_d = MultiFilter(2*_motor.hfi_dt);
-  filter_calc_q = MultiFilter(2*_motor.hfi_dt);
+  filter_calc_a = MultiFilter(1/_motor.hfi_frequency);
+  filter_calc_b = MultiFilter(1/_motor.hfi_frequency);
+  a_lpf=MultiFilter(1/(1.5*_motor.hfi_frequency))
+  b_lpf=MultiFilter(1/(1.5*_motor.hfi_frequency))
   e_in_prev=0; //n-1 e into PLL
   theta_out=0;
   theta_out_prev=0;
   wrotor=0; //PLL speed output
   wrotor_prev=0; //n-1 PLL speed output
-  kp=1;//PI value set based on desired dampening/settling time
-  ki=1;//PI value set based on desired dampening/settling time
+  kp=0.1/(0.5/_motor.hfi_frequency);//PI value set based on desired dampening/settling time
+  ki=0.1/(0.5/_motor.hfi_frequency);//PI value set based on desired dampening/settling time
 }
 
 
@@ -42,16 +44,40 @@ void FluxObserverSensor::update() {
     if(_motor.hfi_enabled){
         sensor_cnt = 0;
         // read current phase currents
-        PhaseCurrent_s current = _motor.current_sense->getFOCCurrents();
-        i_dh=filter_calc_d.getBp(current.d);
-        i_qh=filter_calc_q.getBp(current.q);
+        PhaseCurrent_s current = _motor.current_sense->getPhaseCurrents();
 
-        theta_in = _normalizeAngle(_atan2(_motor.hfi_state*(i_qh-i_qh_prev),_motor.hfi_state*(i_dh-i_dh_prev)));
-        i_dh_prev=i_dh;
-        i_qh_prev=i_qh;
-        e=theta_in-theta_out;
+        // calculate clarke transform
+        float i_alpha, i_beta;
+        if(!current.c){
+            // if only two measured currents
+            i_alpha = current.a;  
+            i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
+        }else if(!current.a){
+            // if only two measured currents
+            float a = -current.c - current.b;
+            i_alpha = a;  
+            i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
+        }else if(!current.b){
+            // if only two measured currents
+            float b = -current.a - current.c;
+            i_alpha = current.a;  
+            i_beta = _1_SQRT3 * current.a + _2_SQRT3 * b;
+        } else {
+            // signal filtering using identity a + b + c = 0. Assumes measurement error is normally distributed.
+            float mid = (1.f/3) * (current.a + current.b + current.c);
+            float a = current.a - mid;
+            float b = current.b - mid;
+            i_alpha = a;
+            i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
+        }
+        i_ah=filter_calc_a.getBp(i_alpha)
+        i_bh=filter_calc_b.getBp(i_beta)
+        theta_in = _normalizeAngle(_atan2(b_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev)/_motor.hfi_dt)),a_lpf.getLp(_motor.hfi_state*((i_ah-i_ah_prev)/_motor.hfi_dt))));
+        i_ah_prev=i_ah;
+        i_bh_prev=i_bh;
+        
         //PLL
-
+        e=theta_in-theta_out;
         Ts=_motor.hfi_dt/1000000.0; //Sample time can be dynamically calculated
 
         wrotor= ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2;
@@ -59,7 +85,7 @@ void FluxObserverSensor::update() {
 
         //Shift values over
         wrotor_prev=wrotor; //Maybe add a counter to offset?
-        e_in_prev1=e;
+        e_in_prev=e;
         theta_out_prev=theta_out;
 
         //Set angle
