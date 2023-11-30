@@ -70,9 +70,12 @@ void FluxObserverSensor::update() {
             i_alpha = a;
             i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
         }
+        
         i_ah=filter_calc_a.getBp(i_alpha);
         i_bh=filter_calc_b.getBp(i_beta);
+        
         theta_in = _normalizeAngle(_atan2(b_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev))),a_lpf.getLp(_motor.hfi_state*((i_ah-i_ah_prev)))));
+        
         i_ah_prev=i_ah-i_ah_prev;
         i_bh_prev=i_bh-i_bh_prev;
         
@@ -84,7 +87,7 @@ void FluxObserverSensor::update() {
         theta_out = (Ts/2)*(wrotor+wrotor_prev)+theta_out_prev;
 
         //Shift values over
-        wrotor_prev=wrotor; //Maybe add a counter to offset?
+        wrotor_prev=wrotor;
         e_in_prev=e;
         theta_out_prev=theta_out;
 
