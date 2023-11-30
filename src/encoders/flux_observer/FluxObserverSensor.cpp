@@ -72,9 +72,9 @@ void FluxObserverSensor::update() {
         }
         i_ah=filter_calc_a.getBp(i_alpha);
         i_bh=filter_calc_b.getBp(i_beta);
-        theta_in = _normalizeAngle(_atan2(b_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev)/_motor.hfi_dt)),a_lpf.getLp(_motor.hfi_state*((i_ah-i_ah_prev)/_motor.hfi_dt))));
-        i_ah_prev=i_ah;
-        i_bh_prev=i_bh;
+        theta_in = _normalizeAngle(_atan2(b_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev))),a_lpf.getLp(_motor.hfi_state*((i_ah-i_ah_prev)))));
+        i_ah_prev=i_ah-i_ah_prev;
+        i_bh_prev=i_bh-i_bh_prev;
         
         //PLL
         e=theta_in-theta_out;
