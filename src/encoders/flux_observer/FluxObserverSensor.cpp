@@ -11,8 +11,8 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   }
   filter_calc_a = MultiFilter(1/_motor.hfi_frequency);
   filter_calc_b = MultiFilter(1/_motor.hfi_frequency);
-  a_lpf=MultiFilter(1/(1.5*_motor.hfi_frequency))
-  b_lpf=MultiFilter(1/(1.5*_motor.hfi_frequency))
+  a_lpf=MultiFilter(1/(1.5*_motor.hfi_frequency));
+  b_lpf=MultiFilter(1/(1.5*_motor.hfi_frequency));
   e_in_prev=0; //n-1 e into PLL
   theta_out=0;
   theta_out_prev=0;
@@ -70,8 +70,8 @@ void FluxObserverSensor::update() {
             i_alpha = a;
             i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
         }
-        i_ah=filter_calc_a.getBp(i_alpha)
-        i_bh=filter_calc_b.getBp(i_beta)
+        i_ah=filter_calc_a.getBp(i_alpha);
+        i_bh=filter_calc_b.getBp(i_beta);
         theta_in = _normalizeAngle(_atan2(b_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev)/_motor.hfi_dt)),a_lpf.getLp(_motor.hfi_state*((i_ah-i_ah_prev)/_motor.hfi_dt))));
         i_ah_prev=i_ah;
         i_bh_prev=i_bh;
@@ -80,7 +80,7 @@ void FluxObserverSensor::update() {
         e=theta_in-theta_out;
         Ts=_motor.hfi_dt/1000000.0; //Sample time can be dynamically calculated
 
-        wrotor= ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2;
+        wrotor = ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2;
         theta_out = (Ts/2)*(wrotor+wrotor_prev)+theta_out_prev;
 
         //Shift values over
