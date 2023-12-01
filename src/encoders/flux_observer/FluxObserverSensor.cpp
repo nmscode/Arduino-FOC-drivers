@@ -22,7 +22,7 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   kp=0.1/(0.5/_motor.hfi_frequency);//PI value set based on desired dampening/settling time
   ki=0.1/(0.5/_motor.hfi_frequency);//PI value set based on desired dampening/settling time
   ke=0.3;
-  convergence_threshold=0.2;
+  convergence_threshold=0.1;
 }
 
 
@@ -79,20 +79,19 @@ void FluxObserverSensor::update() {
         
         theta_in = _normalizeAngle(_atan2(b_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev))),a_lpf.getLp(_motor.hfi_state*((i_ah-i_ah_prev)))));
         
-        float delta_b=e_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev)));
         i_ah_prev=i_ah;
         i_bh_prev=i_bh;
         if(!hfi_converged){
-          if(fabs(delta_b)<convergence_threshold){
+          if(fabs(theta_in)<convergence_threshold){
             hfi_converged=true;
-            e=(theta_in-theta_out);
+            e=e_lpf.getLp(theta_in-theta_out);
            }
           else{
-            e=delta_b;
+            e=e_lpf.getLp(theta_in);
           }
         }
         else{
-          e=(theta_in-theta_out);
+          e=e_lpf.getLp(theta_in-theta_out);
         }       
         //PLL
 
