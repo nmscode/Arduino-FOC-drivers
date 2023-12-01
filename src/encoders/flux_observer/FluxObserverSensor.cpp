@@ -11,8 +11,9 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   }
   filter_calc_a = MultiFilter(1/_motor.hfi_frequency);
   filter_calc_b = MultiFilter(1/_motor.hfi_frequency);
-  a_lpf=MultiFilter(1/(1.5*_motor.hfi_frequency));
-  b_lpf=MultiFilter(1/(1.5*_motor.hfi_frequency));
+  a_lpf=MultiFilter(1/(0.5*_motor.hfi_frequency));
+  b_lpf=MultiFilter(1/(0.5*_motor.hfi_frequency));
+  e_lpf=MultiFilter(1/(0.5*_motor.hfi_frequency));
   e_in_prev=0; //n-1 e into PLL
   theta_out=0;
   theta_out_prev=0;
@@ -21,6 +22,7 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   kp=0.1/(0.5/_motor.hfi_frequency);//PI value set based on desired dampening/settling time
   ki=0.1/(0.5/_motor.hfi_frequency);//PI value set based on desired dampening/settling time
   ke=0.3;
+  convergence_threshold=0.2;
 }
 
 
@@ -38,7 +40,7 @@ void FluxObserverSensor::update() {
 
   // Close to zero speed the flux observer can resonate
   // Estimate the BEMF and use HFI if it's below the threshold and HFI is enabled
-  bool hfi_calculated=false;
+  
   float electrical_angle;
   float bemf = _motor.voltage.q - _motor.phase_resistance * _motor.current.q; 
   if (abs(bemf < bemf_threshold)){
@@ -77,11 +79,23 @@ void FluxObserverSensor::update() {
         
         theta_in = _normalizeAngle(_atan2(b_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev))),a_lpf.getLp(_motor.hfi_state*((i_ah-i_ah_prev)))));
         
-        i_ah_prev=i_ah-i_ah_prev;
-        i_bh_prev=i_bh-i_bh_prev;
-        
+        float delta_b=e_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev)));
+        i_ah_prev=i_ah;
+        i_bh_prev=i_bh;
+        if(!hfi_converged){
+          if(fabs(delta_b)<convergence_threshold){
+            hfi_converged=true;
+            e=(theta_in-theta_out);
+           }
+          else{
+            e=delta_b;
+          }
+        }
+        else{
+          e=(theta_in-theta_out);
+        }       
         //PLL
-        e=e_lpf.getLp(ke*(theta_in-theta_out));
+
         Ts=_motor.hfi_dt/1000000.0; //Sample time can be dynamically calculated
 
         wrotor = ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2;
