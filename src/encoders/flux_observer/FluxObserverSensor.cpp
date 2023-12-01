@@ -97,8 +97,8 @@ void FluxObserverSensor::update() {
         //PLL
         float curr_pll_time=micros();
         Ts=(curr_pll_time-pll_samp_time_prev)/1000000.0; //Sample time can be dynamically calculated
-        ki=0.1/Ts
-        kp=0.1/Ts
+        ki=0.1/Ts;
+        kp=0.1/Ts;
         pll_samp_time_prev=curr_pll_time;
         wrotor = ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2; //bilinear transform based difference equation of transfer function kp+ki/s
         theta_out = (Ts/2)*(wrotor+wrotor_prev)+theta_out_prev; //#1/s transfer function. just integration
@@ -116,6 +116,7 @@ void FluxObserverSensor::update() {
       return;
     }
   }
+  float now;
   if(!hfi_calculated){
     sensor_cnt = 0;
 
@@ -157,7 +158,7 @@ void FluxObserverSensor::update() {
       // to David Molony as the original author must be noted.
 
       // Flux linkage observer    
-      float now = _micros();
+      now = _micros();
       float Ts = ( now - angle_prev_ts) * 1e-6f; 
       flux_alpha = _constrain( flux_alpha + (_motor.Ualpha - _motor.phase_resistance * i_alpha) * Ts -
             _motor.phase_inductance * (i_alpha - i_alpha_prev),-flux_linkage, flux_linkage);
