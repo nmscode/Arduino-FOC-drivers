@@ -20,6 +20,7 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   wrotor_prev=0; //n-1 PLL speed output
   kp=0.1/(0.5/_motor.hfi_frequency);//PI value set based on desired dampening/settling time
   ki=0.1/(0.5/_motor.hfi_frequency);//PI value set based on desired dampening/settling time
+  ke=0.3;
 }
 
 
@@ -80,7 +81,7 @@ void FluxObserverSensor::update() {
         i_bh_prev=i_bh-i_bh_prev;
         
         //PLL
-        e=theta_in-theta_out;
+        e=e_lpf.getLp(ke*(theta_in-theta_out));
         Ts=_motor.hfi_dt/1000000.0; //Sample time can be dynamically calculated
 
         wrotor = ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2;
