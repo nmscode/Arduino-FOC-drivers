@@ -44,6 +44,7 @@ class FluxObserverSensor : public Sensor
     bool hfi_calculated=false;
     bool hfi_converged=false;
     float convergence_threshold;
+    long pll_samp_time_prev;
 
   protected:    
     const FOCMotor& _motor;
