@@ -95,9 +95,7 @@ void FluxObserverSensor::update() {
         }       
         //PLL
         float curr_pll_time=micros();
-        Ts=(curr_pll_time-pll_samp_time_prev)/1000000.0; //Sample time can be dynamically calculated
-        ki=0.1/Ts;
-        kp=0.1/Ts;
+        Ts=_motor.hfi_dt/1000000.0; //Sample time can be dynamically calculated
         pll_samp_time_prev=curr_pll_time;
         wrotor = ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2; //bilinear transform based difference equation of transfer function kp+ki/s
         theta_out = (Ts/2)*(wrotor+wrotor_prev)+theta_out_prev; //#1/s transfer function. just integration
