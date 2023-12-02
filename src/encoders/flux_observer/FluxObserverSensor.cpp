@@ -42,8 +42,7 @@ void FluxObserverSensor::update() {
   // Close to zero speed the flux observer can resonate
   // Estimate the BEMF and use HFI if it's below the threshold and HFI is enabled
   
-  float electrical_angle;
-  float bemf = _motor.voltage.q - _motor.phase_resistance * _motor.current.q; 
+  float bemf = _motor.voltage.q - _motor.phase_resistance * _motor.current.q;
   if (abs(bemf < bemf_threshold)){
     if(_motor.hfi_enabled){
         sensor_cnt = 0;
