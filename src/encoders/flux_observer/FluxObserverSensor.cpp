@@ -45,6 +45,9 @@ void FluxObserverSensor::update() {
   float bemf = _motor.voltage.q - _motor.phase_resistance * _motor.current.q;
   if (abs(bemf < bemf_threshold)){
     if(_motor.hfi_enabled){
+        if(!_motor.hfi_injection_started){
+          return;
+        }
         sensor_cnt = 0;
         // read current phase currents
         PhaseCurrent_s current = _motor.current_sense->getPhaseCurrents();
