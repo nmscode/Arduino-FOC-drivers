@@ -93,6 +93,7 @@ void FluxObserverSensor::update() {
             hfi_converged=true;
             theta_out=theta_in;
             e=e_lpf.getLp(theta_in-theta_out); //If converged switch over to regular error
+            first=0;//Reset angle when converged
            }
           else{
             if(grad_db_lpf.getLp(db-prev_db)>0){
@@ -115,7 +116,7 @@ void FluxObserverSensor::update() {
         Ts=_motor.hfi_dt/1000000.0; //Sample time can be dynamically calculated
         pll_samp_time_prev=curr_pll_time;
         wrotor = ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2; //bilinear transform based difference equation of transfer function kp+ki/s
-        //theta_out = ((Ts/2)*(wrotor+wrotor_prev)+theta_out_prev); //#1/s transfer function. just integration
+        theta_out = ((Ts/2)*(wrotor+wrotor_prev)+theta_out_prev); //#1/s transfer function. just integration
 
         //Shift values over
         wrotor_prev=wrotor;
