@@ -9,20 +9,20 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   if (_isset(_motor.pole_pairs) && _isset(_motor.KV_rating)){
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor.KV_rating) * (_motor.pole_pairs * 2));
   }
-  filter_calc_a = MultiFilter(1/_motor.hfi_frequency);
-  filter_calc_b = MultiFilter(1/_motor.hfi_frequency);
-  a_lpf=MultiFilter(1/(0.5*_motor.hfi_frequency));
-  b_lpf=MultiFilter(1/(0.5*_motor.hfi_frequency));
-  e_lpf=MultiFilter(1/(0.5*_motor.hfi_frequency));
+  filter_calc_a = MultiFilter(1.0f/1500.0f);
+  filter_calc_b = MultiFilter(1.0f/1500.0f);
+  a_lpf=MultiFilter(1.0f/(200.0f));
+  b_lpf=MultiFilter(1.0f/(200.0f));
+  e_lpf=MultiFilter(1.0f/(200.0f));
   e_in_prev=0; //n-1 e into PLL
   theta_out=0;
   theta_out_prev=0;
   wrotor=0; //PLL speed output
   wrotor_prev=0; //n-1 PLL speed output
-  kp=0.1/(0.5/_motor.hfi_frequency);//PI value set based on desired dampening/settling time
-  ki=0.1/(0.5/_motor.hfi_frequency);//PI value set based on desired dampening/settling time
+  kp=0.001/(0.5/1500);//PI value set based on desired dampening/settling time
+  ki=0.01/(0.5/1500);//PI value set based on desired dampening/settling time
   ke=0.3;
-  convergence_threshold=0.1;
+  convergence_threshold=0.05;
   pll_samp_time_prev=micros();
 }
 
@@ -41,7 +41,8 @@ void FluxObserverSensor::update() {
 
   // Close to zero speed the flux observer can resonate
   // Estimate the BEMF and use HFI if it's below the threshold and HFI is enabled
-  
+  kp=0.01;//0.1/(0.5/_motor.hfi_frequency);//PI value set based on desired dampening/settling time
+  ki=0.01;//0.1/(0.5/_motor.hfi_frequency);//PI value set based on desired dampening/settling time
   float bemf = _motor.voltage.q - _motor.phase_resistance * _motor.current.q;
   if (abs(bemf < bemf_threshold)){
     if(_motor.hfi_enabled){
@@ -50,10 +51,9 @@ void FluxObserverSensor::update() {
         }
         sensor_cnt = 0;
         // read current phase currents
-        PhaseCurrent_s current = _motor.current_sense->getPhaseCurrents();
+        current = _motor.current_sense->getPhaseCurrents();
 
         // calculate clarke transform
-        float i_alpha, i_beta;
         if(!current.c){
             // if only two measured currents
             i_alpha = current.a;  
@@ -81,27 +81,28 @@ void FluxObserverSensor::update() {
         i_bh=filter_calc_b.getBp(i_beta);
         
         theta_in = _normalizeAngle(_atan2(b_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev))),a_lpf.getLp(_motor.hfi_state*((i_ah-i_ah_prev)))));
-        
-        i_ah_prev=i_ah;
-        i_bh_prev=i_bh;
+
         if(!hfi_converged){
-          if(fabs(theta_in)<convergence_threshold){
+          if(fabs(theta_in)<convergence_threshold && i_ah>0.2){
             hfi_converged=true;
             e=e_lpf.getLp(theta_in-theta_out); //If converged switch over to regular error
+            //e=e_lpf.getLp(theta_in*0.1);
            }
           else{
-            e=e_lpf.getLp(theta_in); // set error as theta_in to make delta B current go to 0 for convergence
+            e=e_lpf.getLp(theta_in*0.1); // set error as theta_in to make delta B current go to 0 for convergence
           }
         }
         else{
           e=e_lpf.getLp(theta_in-theta_out); //If converged use regular error
-        }       
+        }
+        i_ah_prev=i_ah;
+        i_bh_prev=i_bh;
         //PLL
         float curr_pll_time=micros();
         Ts=_motor.hfi_dt/1000000.0; //Sample time can be dynamically calculated
         pll_samp_time_prev=curr_pll_time;
         wrotor = ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2; //bilinear transform based difference equation of transfer function kp+ki/s
-        theta_out = (Ts/2)*(wrotor+wrotor_prev)+theta_out_prev; //#1/s transfer function. just integration
+        theta_out = ((Ts/2)*(wrotor+wrotor_prev)+theta_out_prev); //#1/s transfer function. just integration
 
         //Shift values over
         wrotor_prev=wrotor;
@@ -121,10 +122,9 @@ void FluxObserverSensor::update() {
     sensor_cnt = 0;
 
   // read current phase currents
-    PhaseCurrent_s current = _motor.current_sense->getPhaseCurrents();
+    current = _motor.current_sense->getPhaseCurrents();
 
     // calculate clarke transform
-    float i_alpha, i_beta;
     if(!current.c){
         // if only two measured currents
         i_alpha = current.a;  
