@@ -10,29 +10,8 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   if (_isset(_motor->pole_pairs) && _isset(_motor->KV_rating)){
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor->KV_rating) * (_motor->pole_pairs * 2));
   }
-  _motor=m;
-  filter_calc_a = MultiFilter(1.0f/1500.0f);
-  filter_calc_b = MultiFilter(1.0f/1500.0f);
-  a_lpf=MultiFilter(1.0f/(200.0f));
-  b_lpf=MultiFilter(1.0f/(200.0f));
-  e_lpf=MultiFilter(1.0f/(200.0f));
-  theta_in_lpf=MultiFilter(1.0f/(200.0f));
-  db_lpf=MultiFilter(1.0f/200.0f);
-  grad_db_lpf=MultiFilter(1.0f/(20.0f));
-  e_in_prev=0; //n-1 e into PLL
-  theta_out=0;
-  theta_out_prev=0;
-  wrotor=0; //PLL speed output
-  wrotor_prev=0; //n-1 PLL speed output
-  kp=0.001/(0.5/1500);//PI value set based on desired dampening/settling time
-  ki=0.01/(0.5/1500);//PI value set based on desired dampening/settling time
-  ke=0.3;
-  convergence_threshold=0.02;
-  pll_samp_time_prev=micros();
-  prev_db=0;
-  grad_db=-0.05;
-  e=0;
-  convergence_count=0;
+  filter_calc_q = MultiFilter(1.0f/1500.0f);
+  
 }
 
 
@@ -60,91 +39,36 @@ void FluxObserverSensor::update() {
         }
         sensor_cnt = 0;
         // read current phase currents
-        current = _motor->current_sense->getPhaseCurrents();
+        current = _motor.current_sense->getFOCCurrents();
 
         // calculate clarke transform
-        if(!current.c){
-            // if only two measured currents
-            i_alpha = current.a;  
-            i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
-        }else if(!current.a){
-            // if only two measured currents
-            float a = -current.c - current.b;
-            i_alpha = a;  
-            i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
-        }else if(!current.b){
-            // if only two measured currents
-            float b = -current.a - current.c;
-            i_alpha = current.a;  
-            i_beta = _1_SQRT3 * current.a + _2_SQRT3 * b;
-        } else {
-            // signal filtering using identity a + b + c = 0. Assumes measurement error is normally distributed.
-            float mid = (1.f/3) * (current.a + current.b + current.c);
-            float a = current.a - mid;
-            float b = current.b - mid;
-            i_alpha = a;
-            i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
-        }
         
-        i_ah=filter_calc_a.getBp(i_alpha);
-        i_bh=filter_calc_b.getBp(i_beta);
+        i_qh=filter_calc_a.getBp(current.q);
         
-        theta_in = theta_in_lpf.getLp(_atan2(b_lpf.getLp(_motor->hfi_state*i_bh),a_lpf.getLp(_motor->hfi_state*i_ah)));
-        db=db_lpf.getLp(_motor->hfi_state*((i_bh-i_bh_prev)));
-        if(!hfi_converged){
-          if(fabs(db)<convergence_threshold && fabs(i_ah)>0.2){
-            convergence_count+=1;
-          }
-          else{
-            if(grad_db_lpf.getLp(db-prev_db)>0){
-              grad_db*=-1;
-            }
-            convergence_count=0;
-            theta_out+=grad_db;
-            theta_out=_normalizeAngle(theta_out);
-            electrical_angle=theta_out;
-            //e=e_lpf.getLp(theta_in-theta_out);
-          }
-          if(convergence_count>50){
-            hfi_converged=true;
-            _motor->zero_electric_angle=(theta_out);
-            theta_out=theta_in;
-            e=e_lpf.getLp(theta_in-theta_out); //If converged switch over to regular error
-            e_in_prev=0;
-            wrotor_prev=0;
-            theta_out_prev=theta_in;
-            first=0;//Reset angle when converged
-          }
-        }
-        
-        else{
-          e=e_lpf.getLp(theta_in-theta_out); //If converged use regular error
-        }
-        i_ah_prev=i_ah;
-        i_bh_prev=i_bh;
-        if(hfi_converged){
+        e=_motor->hfi_state*(i_qh-i_qh_prev);
+
         //PLL
-        float curr_pll_time=micros();
-        Ts=_motor->hfi_dt/1000000.0; //Sample time can be dynamically calculated
-        pll_samp_time_prev=curr_pll_time;
+        Ts=_motor.hfi_dt/1000000.0; //Sample time can be dynamically calculated
         wrotor = ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2; //bilinear transform based difference equation of transfer function kp+ki/s
         theta_out = ((Ts/2)*(wrotor+wrotor_prev)+theta_out_prev); //#1/s transfer function. just integration
-
+        
+        i_qh_prev=i_qh;
         //Shift values over
         wrotor_prev=wrotor;
         e_in_prev=e;
         theta_out_prev=theta_out;
-
         //Set angle
         electrical_angle=theta_out;
-        }
+        
         angle_prev = electrical_angle /_motor->pole_pairs;
         hfi_calculated=true;
         return;
-  }
-  else{
+    }
+    else{
     return;
   }
+  }
+  
   }
   float now;
   if(!hfi_calculated){
