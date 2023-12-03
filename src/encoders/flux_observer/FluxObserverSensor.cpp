@@ -92,6 +92,7 @@ void FluxObserverSensor::update() {
           if(fabs(db)<convergence_threshold && i_ah>0.2){
             hfi_converged=true;
             theta_out=theta_in;
+            _motor.zero_electrical_angle=theta_in;
             e=e_lpf.getLp(theta_in-theta_out); //If converged switch over to regular error
             first=0;//Reset angle when converged
            }
