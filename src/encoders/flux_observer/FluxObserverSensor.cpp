@@ -14,6 +14,9 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   a_lpf=MultiFilter(1.0f/(200.0f));
   b_lpf=MultiFilter(1.0f/(200.0f));
   e_lpf=MultiFilter(1.0f/(200.0f));
+  theta_in_lpf=MultiFilter(1.0f/(200.0f));
+  db_lpf=MultiFilter(1.0f/(200.0f));
+  grad_db_lpf=MultiFilter(1.0f/(200.0f));
   e_in_prev=0; //n-1 e into PLL
   theta_out=0;
   theta_out_prev=0;
@@ -22,10 +25,11 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   kp=0.001/(0.5/1500);//PI value set based on desired dampening/settling time
   ki=0.01/(0.5/1500);//PI value set based on desired dampening/settling time
   ke=0.3;
-  convergence_threshold=0.05;
+  convergence_threshold=0.01;
   pll_samp_time_prev=micros();
   prev_db=0;
-  grad_db=-0.02;
+  grad_db=-0.1;
+  e=0;
 }
 
 
@@ -82,20 +86,22 @@ void FluxObserverSensor::update() {
         i_ah=filter_calc_a.getBp(i_alpha);
         i_bh=filter_calc_b.getBp(i_beta);
         
-        theta_in = _normalizeAngle(_atan2(b_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev))),a_lpf.getLp(_motor.hfi_state*((i_ah-i_ah_prev)))));
+        theta_in = theta_in_lpf.getLp(_atan2(b_lpf.getLp(_motor.hfi_state*i_bh),a_lpf.getLp(_motor.hfi_state*i_ah)));
         db=db_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev)));
         if(!hfi_converged){
           if(fabs(db)<convergence_threshold && i_ah>0.2){
             hfi_converged=true;
+            theta_out=theta_in;
             e=e_lpf.getLp(theta_in-theta_out); //If converged switch over to regular error
            }
           else{
-            if(db-prev_db>0){
+            if(grad_db_lpf.getLp(db-prev_db)>0){
               grad_db*=-1;
             }
             theta_out+=grad_db;
+            theta_out=_normalizeAngle(theta_out);
             electrical_angle=theta_out;
-            e=e_lpf.getLp(theta_in-theta_out);
+            //e=e_lpf.getLp(theta_in-theta_out);
           }
         }
         else{
@@ -109,7 +115,7 @@ void FluxObserverSensor::update() {
         Ts=_motor.hfi_dt/1000000.0; //Sample time can be dynamically calculated
         pll_samp_time_prev=curr_pll_time;
         wrotor = ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2; //bilinear transform based difference equation of transfer function kp+ki/s
-        theta_out = ((Ts/2)*(wrotor+wrotor_prev)+theta_out_prev); //#1/s transfer function. just integration
+        //theta_out = ((Ts/2)*(wrotor+wrotor_prev)+theta_out_prev); //#1/s transfer function. just integration
 
         //Shift values over
         wrotor_prev=wrotor;
