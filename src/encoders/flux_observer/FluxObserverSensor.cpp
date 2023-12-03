@@ -83,7 +83,7 @@ void FluxObserverSensor::update() {
         i_bh=filter_calc_b.getBp(i_beta);
         
         theta_in = _normalizeAngle(_atan2(b_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev))),a_lpf.getLp(_motor.hfi_state*((i_ah-i_ah_prev)))));
-        db=db_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev)))
+        db=db_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev)));
         if(!hfi_converged){
           if(fabs(db)<convergence_threshold && i_ah>0.2){
             hfi_converged=true;
