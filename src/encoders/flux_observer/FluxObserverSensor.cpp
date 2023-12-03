@@ -2,21 +2,23 @@
 #include "common/foc_utils.h"
 #include "common/time_utils.h"
 #include "common/multi_filter.h"
+#include "BLDCmotor.h"
 
-FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
+FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
 {
   // Derive Flux linkage from KV_rating and pole_pairs
-  if (_isset(_motor.pole_pairs) && _isset(_motor.KV_rating)){
-    flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor.KV_rating) * (_motor.pole_pairs * 2));
+  if (_isset(_motor->pole_pairs) && _isset(_motor->KV_rating)){
+    flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor->KV_rating) * (_motor->pole_pairs * 2));
   }
+  _motor=m;
   filter_calc_a = MultiFilter(1.0f/1500.0f);
   filter_calc_b = MultiFilter(1.0f/1500.0f);
   a_lpf=MultiFilter(1.0f/(200.0f));
   b_lpf=MultiFilter(1.0f/(200.0f));
   e_lpf=MultiFilter(1.0f/(200.0f));
   theta_in_lpf=MultiFilter(1.0f/(200.0f));
-  db_lpf=MultiFilter(1.0f/(200.0f));
-  grad_db_lpf=MultiFilter(1.0f/(200.0f));
+  db_lpf=MultiFilter(1.0f/200.0f);
+  grad_db_lpf=MultiFilter(1.0f/(20.0f));
   e_in_prev=0; //n-1 e into PLL
   theta_out=0;
   theta_out_prev=0;
@@ -25,21 +27,22 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   kp=0.001/(0.5/1500);//PI value set based on desired dampening/settling time
   ki=0.01/(0.5/1500);//PI value set based on desired dampening/settling time
   ke=0.3;
-  convergence_threshold=0.01;
+  convergence_threshold=0.02;
   pll_samp_time_prev=micros();
   prev_db=0;
-  grad_db=-0.1;
+  grad_db=-0.05;
   e=0;
+  convergence_count=0;
 }
 
 
 void FluxObserverSensor::update() {
   // Current sense is required for the observer
-  if (!_motor.current_sense) return;
+  if (!_motor->current_sense) return;
   
   // Exit if one of the parameter needed for the flux observer is 0
-  if ((_motor.phase_inductance == 0) ||
-      (_motor.phase_resistance == 0) ||
+  if ((_motor->phase_inductance == 0) ||
+      (_motor->phase_resistance == 0) ||
       (flux_linkage == 0)) return;
 
   // Update sensor, with optional downsampling of update rate
@@ -47,17 +50,17 @@ void FluxObserverSensor::update() {
 
   // Close to zero speed the flux observer can resonate
   // Estimate the BEMF and use HFI if it's below the threshold and HFI is enabled
-  kp=0.01;//0.1/(0.5/_motor.hfi_frequency);//PI value set based on desired dampening/settling time
-  ki=0.01;//0.1/(0.5/_motor.hfi_frequency);//PI value set based on desired dampening/settling time
-  float bemf = _motor.voltage.q - _motor.phase_resistance * _motor.current.q;
+  kp=0.1;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
+  ki=0.1;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
+  float bemf = _motor->voltage.q - _motor->phase_resistance * _motor->current.q;
   if (abs(bemf < bemf_threshold)){
-    if(_motor.hfi_enabled){
-        if(!_motor.hfi_injection_started){
+    if(_motor->hfi_enabled){
+        if(!_motor->hfi_injection_started){
           return;
         }
         sensor_cnt = 0;
         // read current phase currents
-        current = _motor.current_sense->getPhaseCurrents();
+        current = _motor->current_sense->getPhaseCurrents();
 
         // calculate clarke transform
         if(!current.c){
@@ -86,26 +89,34 @@ void FluxObserverSensor::update() {
         i_ah=filter_calc_a.getBp(i_alpha);
         i_bh=filter_calc_b.getBp(i_beta);
         
-        theta_in = theta_in_lpf.getLp(_atan2(b_lpf.getLp(_motor.hfi_state*i_bh),a_lpf.getLp(_motor.hfi_state*i_ah)));
-        db=db_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev)));
+        theta_in = theta_in_lpf.getLp(_atan2(b_lpf.getLp(_motor->hfi_state*i_bh),a_lpf.getLp(_motor->hfi_state*i_ah)));
+        db=db_lpf.getLp(_motor->hfi_state*((i_bh-i_bh_prev)));
         if(!hfi_converged){
-          if(fabs(db)<convergence_threshold && i_ah>0.2){
-            hfi_converged=true;
-            theta_out=theta_in;
-            _motor.zero_electrical_angle=theta_in;
-            e=e_lpf.getLp(theta_in-theta_out); //If converged switch over to regular error
-            first=0;//Reset angle when converged
-           }
+          if(fabs(db)<convergence_threshold && fabs(i_ah)>0.2){
+            convergence_count+=1;
+          }
           else{
             if(grad_db_lpf.getLp(db-prev_db)>0){
               grad_db*=-1;
             }
+            convergence_count=0;
             theta_out+=grad_db;
             theta_out=_normalizeAngle(theta_out);
             electrical_angle=theta_out;
             //e=e_lpf.getLp(theta_in-theta_out);
           }
+          if(convergence_count>50){
+            hfi_converged=true;
+            _motor->zero_electric_angle=(theta_out);
+            theta_out=theta_in;
+            e=e_lpf.getLp(theta_in-theta_out); //If converged switch over to regular error
+            e_in_prev=0;
+            wrotor_prev=0;
+            theta_out_prev=theta_in;
+            first=0;//Reset angle when converged
+          }
         }
+        
         else{
           e=e_lpf.getLp(theta_in-theta_out); //If converged use regular error
         }
@@ -114,7 +125,7 @@ void FluxObserverSensor::update() {
         if(hfi_converged){
         //PLL
         float curr_pll_time=micros();
-        Ts=_motor.hfi_dt/1000000.0; //Sample time can be dynamically calculated
+        Ts=_motor->hfi_dt/1000000.0; //Sample time can be dynamically calculated
         pll_samp_time_prev=curr_pll_time;
         wrotor = ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2; //bilinear transform based difference equation of transfer function kp+ki/s
         theta_out = ((Ts/2)*(wrotor+wrotor_prev)+theta_out_prev); //#1/s transfer function. just integration
@@ -127,18 +138,20 @@ void FluxObserverSensor::update() {
         //Set angle
         electrical_angle=theta_out;
         }
+        angle_prev = electrical_angle /_motor->pole_pairs;
         hfi_calculated=true;
-    }
-    else{
-      return;
-    }
+        return;
+  }
+  else{
+    return;
+  }
   }
   float now;
   if(!hfi_calculated){
     sensor_cnt = 0;
 
   // read current phase currents
-    current = _motor.current_sense->getPhaseCurrents();
+    current = _motor->current_sense->getPhaseCurrents();
 
     // calculate clarke transform
     if(!current.c){
@@ -176,10 +189,10 @@ void FluxObserverSensor::update() {
       // Flux linkage observer    
       now = _micros();
       float Ts = ( now - angle_prev_ts) * 1e-6f; 
-      flux_alpha = _constrain( flux_alpha + (_motor.Ualpha - _motor.phase_resistance * i_alpha) * Ts -
-            _motor.phase_inductance * (i_alpha - i_alpha_prev),-flux_linkage, flux_linkage);
-      flux_beta  = _constrain( flux_beta  + (_motor.Ubeta  - _motor.phase_resistance * i_beta)  * Ts -
-            _motor.phase_inductance * (i_beta  - i_beta_prev) ,-flux_linkage, flux_linkage);
+      flux_alpha = _constrain( flux_alpha + (_motor->Ualpha - _motor->phase_resistance * i_alpha) * Ts -
+            _motor->phase_inductance * (i_alpha - i_alpha_prev),-flux_linkage, flux_linkage);
+      flux_beta  = _constrain( flux_beta  + (_motor->Ubeta  - _motor->phase_resistance * i_beta)  * Ts -
+            _motor->phase_inductance * (i_beta  - i_beta_prev) ,-flux_linkage, flux_linkage);
       
       // Calculate angle
         electrical_angle = _normalizeAngle(_atan2(flux_beta,flux_alpha));
@@ -205,16 +218,16 @@ void FluxObserverSensor::update() {
   angle_track += d_electrical_angle;
 
   // Mechanical angle and full_rotations
-  if(abs(angle_track) > _2PI * _motor.pole_pairs){
+  if(abs(angle_track) > _2PI * _motor->pole_pairs){
     if (angle_track>0){
       full_rotations += 1;
-      angle_track -= _2PI * _motor.pole_pairs;
+      angle_track -= _2PI * _motor->pole_pairs;
     }else{
       full_rotations -= 1;
-      angle_track += _2PI * _motor.pole_pairs;
+      angle_track += _2PI * _motor->pole_pairs;
     }
   }
-  angle_prev = angle_track /_motor.pole_pairs;
+  angle_prev = angle_track /_motor->pole_pairs;
   
   // Store Previous values
   i_alpha_prev = i_alpha;

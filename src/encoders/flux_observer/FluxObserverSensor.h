@@ -5,6 +5,7 @@
 #include "common/base_classes/FOCMotor.h"
 #include "common/base_classes/Sensor.h"
 #include "common/multi_filter.h"
+#include "BLDCMotor.h"
 /**
   
 */
@@ -16,7 +17,7 @@ class FluxObserverSensor : public Sensor
     FluxObserverSensor class constructor
     @param m  Motor that the FluxObserverSensor will be linked to
     */
-    FluxObserverSensor(const FOCMotor& m);
+    FluxObserverSensor(BLDCMotor* m);
     void update() override;
  
     void init() override;
@@ -25,7 +26,7 @@ class FluxObserverSensor : public Sensor
     /** get current angle (rad) */
     float getSensorAngle() override;
 
-    
+    BLDCMotor* _motor;
     // For sensors with slow communication, use these to poll less often
     unsigned int sensor_downsample = 0; // parameter defining the ratio of downsampling for sensor update
     unsigned int sensor_cnt = 0; // counting variable for downsampling
@@ -45,13 +46,12 @@ class FluxObserverSensor : public Sensor
     bool hfi_calculated=false;
     bool hfi_converged=false;
     float convergence_threshold;
+    int convergence_count;
     float grad_db, prev_db;
     float db;
     long pll_samp_time_prev;
     PhaseCurrent_s current;
 
-  protected:    
-    const FOCMotor& _motor;
 
 };
 
