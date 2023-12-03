@@ -39,11 +39,21 @@ void FluxObserverSensor::update() {
         }
         sensor_cnt = 0;
         // read current phase currents
-        current = _motor->current_sense->getFOCCurrents();
+        current = _motor->current_sense->getPhaseCurrents();
+
+        float mid = (1.f/3) * (current.a + current.b + current.c);
+        float a = current.a - mid;
+        float b = current.b - mid;
+        i_alpha = a;
+        i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
+        
+        float ct;
+        float st;
+        _sincos(theta_hat, &st, &ct);
 
         // calculate clarke transform
         
-        i_qh=filter_calc_q.getBp(current.q);
+        i_qh=filter_calc_q.getBp(i_beta * ct - i_alpha * st);
         
         e=_motor->hfi_state*(i_qh-i_qh_prev);
 
