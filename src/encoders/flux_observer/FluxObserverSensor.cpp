@@ -24,6 +24,8 @@ FluxObserverSensor::FluxObserverSensor(const FOCMotor& m) : _motor(m)
   ke=0.3;
   convergence_threshold=0.05;
   pll_samp_time_prev=micros();
+  prev_db=0;
+  grad_db=-0.02;
 }
 
 
@@ -81,15 +83,19 @@ void FluxObserverSensor::update() {
         i_bh=filter_calc_b.getBp(i_beta);
         
         theta_in = _normalizeAngle(_atan2(b_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev))),a_lpf.getLp(_motor.hfi_state*((i_ah-i_ah_prev)))));
-
+        db=db_lpf.getLp(_motor.hfi_state*((i_bh-i_bh_prev)))
         if(!hfi_converged){
-          if(fabs(theta_in)<convergence_threshold && i_ah>0.2){
+          if(fabs(db)<convergence_threshold && i_ah>0.2){
             hfi_converged=true;
             e=e_lpf.getLp(theta_in-theta_out); //If converged switch over to regular error
-            //e=e_lpf.getLp(theta_in*0.1);
            }
           else{
-            e=e_lpf.getLp(theta_in*0.1); // set error as theta_in to make delta B current go to 0 for convergence
+            if(db-prev_db>0){
+              grad_db*=-1;
+            }
+            theta_out+=grad_db;
+            electrical_angle=theta_out;
+            e=e_lpf.getLp(theta_in-theta_out);
           }
         }
         else{
@@ -97,6 +103,7 @@ void FluxObserverSensor::update() {
         }
         i_ah_prev=i_ah;
         i_bh_prev=i_bh;
+        if(hfi_converged){
         //PLL
         float curr_pll_time=micros();
         Ts=_motor.hfi_dt/1000000.0; //Sample time can be dynamically calculated
@@ -110,8 +117,9 @@ void FluxObserverSensor::update() {
         theta_out_prev=theta_out;
 
         //Set angle
-        hfi_calculated=true;
         electrical_angle=theta_out;
+        }
+        hfi_calculated=true;
     }
     else{
       return;
