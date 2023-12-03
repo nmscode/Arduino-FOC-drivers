@@ -190,6 +190,7 @@ void FluxObserverSensor::update() {
     // Skip angle difference calculation the first time
     first = 0;
     d_electrical_angle = electrical_angle;
+    angle_track=0;
   }else{
     d_electrical_angle = electrical_angle - electrical_angle_prev;
     if(abs(d_electrical_angle) > _2PI * 0.8 ){ //change the  factor based on sample rate can also just use _PI for simplicity 
