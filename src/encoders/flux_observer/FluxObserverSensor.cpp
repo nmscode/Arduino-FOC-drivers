@@ -13,10 +13,6 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   filter_calc_q = MultiFilter(1.0f/1500.0f);
   q_lp=MultiFilter(1.0f/200.0f);
 
-  alpha_bp=MultiFilter(1.0f/1500.0f);
-  beta_bp=MultiFilter(1.0f/1500.0f);
-  alpha_lp=MultiFilter(1.0f/200.0f);
-  beta_lp=MultiFilter(1.0f/200.0f);
   theta_out=0;
   _motor=m;
   theta_out_prev=0;
@@ -63,7 +59,6 @@ void FluxObserverSensor::update() {
         _sincos(theta_out, &st, &ct);
 
         // calculate clarke transform
-        atan_test=_atan2(beta_lp.getLp(_motor->hfi_state*beta_bp.getBp(i_beta)), alpha_lp.getLp(_motor->hfi_state*alpha_bp.getBp(i_alpha)))
         i_qh=filter_calc_q.getBp(i_beta * ct - i_alpha * st);
         
         e=ke*q_lp.getLp(_motor->hfi_state*(i_qh-i_qh_prev));
