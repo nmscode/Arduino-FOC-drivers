@@ -15,13 +15,13 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
 
   filter_calc_d = MultiFilter(1.0f/1500.0f);
   d_lp=MultiFilter(1.0f/200.0f);
-
+  e_lpf=MultiFilter(1.0f/200.0f);
   theta_out=0;
   _motor=m;
   theta_out_prev=0;
   wrotor=0;
   wrotor_prev=0;
-  ke=1;
+  ke=1.0f;
   prev_pll_time=micros();
 }
 
@@ -41,7 +41,7 @@ void FluxObserverSensor::update() {
   // Close to zero speed the flux observer can resonate
   // Estimate the BEMF and use HFI if it's below the threshold and HFI is enabled
   kp=1.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
-  ki=10.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
+  ki=0.001f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
   float bemf = _motor->voltage.q - _motor->phase_resistance * _motor->current.q;
   if (abs(bemf < bemf_threshold)){
     if(_motor->hfi_enabled){
@@ -58,7 +58,6 @@ void FluxObserverSensor::update() {
         float b = current.b - mid;
         i_alpha = a;
         i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
-        
         float ct;
         float st;
         _sincos(theta_out, &st, &ct);
@@ -72,13 +71,13 @@ void FluxObserverSensor::update() {
         delta_i_qh=q_lp.getLp(_motor->hfi_state*(i_qh-i_qh_prev));
         delta_i_dh=d_lp.getLp(_motor->hfi_state*(i_dh-i_dh_prev));
         
-        atan_test=_atan2(delta_i_qh/delta_d_qh);
-        e=ke*delta_i_qh;
+        atan_test=(_atan2(delta_i_qh,delta_i_dh));
+        e=ke*((theta_out_prev-atan_test));
 
         //PLL
         float curr_pll_time=micros();
         Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
-        wrotor = ((2.0f*kp+ki*Ts)*e + (ki*Ts-2.0f*kp)*e_in_prev)/2.0f + wrotor_prev; //bilinear transform based difference equation of transfer function kp+ki/s
+        wrotor = _constrain(((2.0f*kp+ki*Ts)*e + (ki*Ts-2.0f*kp)*e_in_prev)/2.0f + wrotor_prev,-0.5f/Ts,0.5f/Ts); //bilinear transform based difference equation of transfer function kp+ki/s
         theta_out = _normalizeAngle(((Ts/2.0f)*(wrotor+wrotor_prev)+theta_out_prev)); //#1/s transfer function. just integration
         prev_pll_time=curr_pll_time;
         i_qh_prev=i_qh;
