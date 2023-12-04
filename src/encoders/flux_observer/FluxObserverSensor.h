@@ -42,9 +42,10 @@ class FluxObserverSensor : public Sensor
     int8_t first = 1; // To skip angle difference calculation the first time
     float i_alpha,i_beta,i_qh, i_qh_prev; //Stores the band passed currents and previous difference values
     float Ts, e, e_in_prev, theta_out, theta_out_prev, wrotor, wrotor_prev, kp, ki, ke; //PLL values
-    MultiFilter filter_calc_q,q_lp; //Filters for HFI
+    MultiFilter filter_calc_q,q_lp,alpha_bp,beta_bp,alpha_lp,beta_lp; //Filters for HFI
     bool hfi_calculated=false;
     PhaseCurrent_s current;
+    float atan_test;
 
 
 };
