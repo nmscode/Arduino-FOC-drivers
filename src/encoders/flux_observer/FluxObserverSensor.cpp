@@ -11,7 +11,13 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor->KV_rating) * (_motor->pole_pairs * 2));
   }
   filter_calc_q = MultiFilter(1.0f/1500.0f);
-  
+  q_lp=MultiFilter(1.0f/200.0f);
+  theta_out=0;
+  _motor=m;
+  theta_out_prev=0;
+  wrotor=0;
+  wrotor_prev=0;
+  ke=10;
 }
 
 
@@ -29,8 +35,8 @@ void FluxObserverSensor::update() {
 
   // Close to zero speed the flux observer can resonate
   // Estimate the BEMF and use HFI if it's below the threshold and HFI is enabled
-  kp=0.1;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
-  ki=0.1;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
+  kp=2.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
+  ki=0.001f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
   float bemf = _motor->voltage.q - _motor->phase_resistance * _motor->current.q;
   if (abs(bemf < bemf_threshold)){
     if(_motor->hfi_enabled){
@@ -49,18 +55,18 @@ void FluxObserverSensor::update() {
         
         float ct;
         float st;
-        _sincos(theta_hat, &st, &ct);
+        _sincos(theta_out, &st, &ct);
 
         // calculate clarke transform
         
         i_qh=filter_calc_q.getBp(i_beta * ct - i_alpha * st);
         
-        e=_motor->hfi_state*(i_qh-i_qh_prev);
+        e=ke*q_lp.getLp(_motor->hfi_state*(i_qh-i_qh_prev));
 
         //PLL
-        Ts=_motor.hfi_dt/1000000.0; //Sample time can be dynamically calculated
+        Ts=_motor->hfi_dt/1000000.0; //Sample time can be dynamically calculated
         wrotor = ((2*kp+ki*Ts)*e + (ki*Ts-2*kp)*e_in_prev + 2 * (wrotor_prev))/2; //bilinear transform based difference equation of transfer function kp+ki/s
-        theta_out = ((Ts/2)*(wrotor+wrotor_prev)+theta_out_prev); //#1/s transfer function. just integration
+        theta_out = (((Ts/2)*(wrotor+wrotor_prev)+theta_out_prev)); //#1/s transfer function. just integration
         
         i_qh_prev=i_qh;
         //Shift values over
@@ -76,10 +82,9 @@ void FluxObserverSensor::update() {
     }
     else{
     return;
-  }
+    }
   }
   
-  }
   float now;
   if(!hfi_calculated){
     sensor_cnt = 0;
