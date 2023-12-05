@@ -10,18 +10,21 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   if (_isset(_motor->pole_pairs) && _isset(_motor->KV_rating)){
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor->KV_rating) * (_motor->pole_pairs * 2));
   }
-  filter_calc_q = MultiFilter(1.0f/1500.0f);
-  q_lp=MultiFilter(1.0f/200.0f);
+  filter_calc_q = MultiFilter(1.0f/600.0f);
+  q_lp=MultiFilter(1.0f/20.0f);
 
-  filter_calc_d = MultiFilter(1.0f/1500.0f);
-  d_lp=MultiFilter(1.0f/200.0f);
-  e_lpf=MultiFilter(1.0f/200.0f);
+  // filter_calc_d = MultiFilter(1.0f/1500.0f);
+  // d_lp=MultiFilter(1.0f/200.0f);
+
   theta_out=0;
   _motor=m;
   theta_out_prev=0;
   wrotor=0;
   wrotor_prev=0;
-  ke=1.0f;
+  input=0;
+  input_prev=0;
+  second_integral_input=0;
+  second_integral_input_prev=0;
   prev_pll_time=micros();
 }
 
@@ -40,8 +43,10 @@ void FluxObserverSensor::update() {
 
   // Close to zero speed the flux observer can resonate
   // Estimate the BEMF and use HFI if it's below the threshold and HFI is enabled
-  kp=1.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
-  ki=0.001f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
+  //kp=1.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
+  //ki=10.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
+  kw=1250
+  ktheta=150
   float bemf = _motor->voltage.q - _motor->phase_resistance * _motor->current.q;
   if (abs(bemf < bemf_threshold)){
     if(_motor->hfi_enabled){
@@ -62,29 +67,40 @@ void FluxObserverSensor::update() {
         float st;
         _sincos(theta_out, &st, &ct);
 
-        // calculate clarke transform
-        i_qh=filter_calc_q.getBp(i_beta * ct - i_alpha * st);
-        i_dh=filter_calc_d.getBp(i_alpha * ct + i_beta * st);
+        i_qh=(i_beta * ct - i_alpha * st);
+        //i_dh=filter_calc_d.getBp(i_alpha * ct + i_beta * st);
 
         
 
-        delta_i_qh=q_lp.getLp(_motor->hfi_state*(i_qh-i_qh_prev));
-        delta_i_dh=d_lp.getLp(_motor->hfi_state*(i_dh-i_dh_prev));
+        //delta_i_qh=q_lp.getLp(_motor->hfi_state*(i_qh-i_qh_prev));
+        //delta_i_dh=d_lp.getLp(_motor->hfi_state*(i_dh-i_dh_prev));
         
-        atan_test=(_atan2(delta_i_qh,delta_i_dh));
-        e=ke*((theta_out_prev-atan_test));
+        //atan_test=_atan2(delta_i_qh/delta_d_qh);
+        if(theta_out-theta_out_prev>0){
+          sigma=1.0;
+        }
+        elif(theta_out-theta_out_prev<0){
+          sigma=-1.0;
+        }
+        else{
+          sigma=0.0;
+        }
+        e=q_lp.getLp(filter_calc_q.getHp(i_qh)*_cos(micros()*_2PI/((1.0f/hfi_frequency)*1000000.0f)));//ke*delta_i_qh;
 
-        //PLL
+        //Position Observer
+        input=(kw*e*sigma);
         float curr_pll_time=micros();
         Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
-        wrotor = _constrain(((2.0f*kp+ki*Ts)*e + (ki*Ts-2.0f*kp)*e_in_prev)/2.0f + wrotor_prev,-0.5f/Ts,0.5f/Ts); //bilinear transform based difference equation of transfer function kp+ki/s
-        theta_out = _normalizeAngle(((Ts/2.0f)*(wrotor+wrotor_prev)+theta_out_prev)); //#1/s transfer function. just integration
+        wrotor = (Ts/2.0f)*(input+input_prev)+wrotor_prev;//((2.0f*kp+ki*Ts)*e + (ki*Ts-2.0f*kp)*e_in_prev)/2.0f + wrotor_prev; //bilinear transform based difference equation of transfer function kp+ki/s
+        second_integral_input=wrotor+ktheta*e*sigma;
+        theta_out = _normalizeAngle(((Ts/2.0f)*(second_integral+second_integral_prev)+theta_out_prev)); //#1/s transfer function. just integration
         prev_pll_time=curr_pll_time;
         i_qh_prev=i_qh;
         i_dh_prev=i_dh;
         //Shift values over
         wrotor_prev=wrotor;
-        e_in_prev=e;
+        second_integral_input_prev=second_integral_input;
+        input_prev=input;
         theta_out_prev=theta_out;
         //Set angle
         electrical_angle=theta_out;
