@@ -26,6 +26,7 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   second_integral_input=0;
   second_integral_input_prev=0;
   prev_pll_time=micros();
+  sigma=0.0;
 }
 
 
@@ -76,10 +77,10 @@ void FluxObserverSensor::update() {
         //delta_i_dh=d_lp.getLp(_motor->hfi_state*(i_dh-i_dh_prev));
         
         //atan_test=_atan2(delta_i_qh/delta_d_qh);
-        if(theta_out-theta_out_prev>0){
+        if(theta_out>theta_out_prev){
           sigma=1.0;
         }
-        elif(theta_out-theta_out_prev<0){
+        elif(theta_out<theta_out_prev){
           sigma=-1.0;
         }
         else{
