@@ -106,9 +106,9 @@ void FluxObserverSensor::update() {
         //Set angle
         electrical_angle=theta_out;
         
-        angle_prev = electrical_angle /_motor->pole_pairs;
+        //angle_prev = electrical_angle /_motor->pole_pairs;
         hfi_calculated=true;
-        return;
+        //return;
     }
     else{
     return;
