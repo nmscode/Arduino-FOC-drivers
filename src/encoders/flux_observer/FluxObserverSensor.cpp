@@ -79,19 +79,20 @@ void FluxObserverSensor::update() {
         //atan_test=_atan2(delta_i_qh/delta_d_qh);
         e=q_lp.getLp(filter_calc_q.getHp(i_qh)*_cos(_normalizeAngle(_motor->hfi_dt*_2PI/((1.0f/hfi_frequency)*1000000.0f))));//ke*delta_i_qh;
 
+        
+        //Position Observer
+        float curr_pll_time=micros();
+        Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
         if(e>0){
-          sigma=1.0;
+          sigma=1.0f/Ts;
         }
         else if (e<0){
-          sigma=-1.0;
+          sigma=-1.0f/Ts;
         }
 
         else{
           sigma=0.0;
         }
-        //Position Observer
-        float curr_pll_time=micros();
-        Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
         input=(kw*sigma);
         wrotor = (Ts/2.0f)*(input+input_prev)+wrotor_prev;//((2.0f*kp+ki*Ts)*e + (ki*Ts-2.0f*kp)*e_in_prev)/2.0f + wrotor_prev; //bilinear transform based difference equation of transfer function kp+ki/s
         second_integral_input=wrotor+ktheta*sigma;
