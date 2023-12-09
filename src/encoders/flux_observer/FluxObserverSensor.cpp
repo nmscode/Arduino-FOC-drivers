@@ -27,6 +27,15 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   second_integral_input_prev=0;
   prev_pll_time=micros();
   sigma=1.0;
+
+  theta_anti_chatter=0;
+  theta_anti_chatter_prev=0;
+  delta_anti_chatter=0;
+  delta_anti_chatter_prev=0;
+  e_pll=0;
+  e_pll_prev=0;
+  ki=1000.0f;
+  kp=1.0f;
 }
 
 
@@ -100,7 +109,9 @@ void FluxObserverSensor::update() {
         input=(kw*sigma);
         wrotor = (Ts/2.0f)*(input+input_prev)+wrotor_prev;//((2.0f*kp+ki*Ts)*e + (ki*Ts-2.0f*kp)*e_in_prev)/2.0f + wrotor_prev; //bilinear transform based difference equation of transfer function kp+ki/s
         second_integral_input=wrotor+ktheta*sigma;
-        theta_out = _normalizeAngle(((Ts/2.0f)*(second_integral_input+second_integral_input_prev)+theta_out_prev)); //#1/s transfer function. just integration
+        theta_out = (((Ts/2.0f)*(second_integral_input+second_integral_input_prev)+theta_out_prev)); //#1/s transfer function. just integration
+        e_pll=(theta_out-theta_anti_chatter)/Ts
+        theta_out=_normalizeAngle(theta_out)
         prev_pll_time=curr_pll_time;
         i_qh_prev=i_qh;
         i_dh_prev=i_dh;
@@ -111,16 +122,16 @@ void FluxObserverSensor::update() {
 
         theta_out_prev=theta_out;
         //PLL for anti chatter
-        e_pll=theta_out-theta_anti_chatter
+        
         delta_anti_chatter=((2.0f*kp+ki*Ts)*e_pll + (ki*Ts-2.0f*kp)*e_pll_prev)/2.0f + delta_anti_chatter_prev; //bilinear transform based difference equation of transfer function kp+ki/s
-        theta_anti_chatter=(Ts/2.0f)*(delta_anti_chatter+delta_anti_chatter_prev)+theta_anti_chatter_prev;
+        theta_anti_chatter=_normalizeAngle((Ts/2.0f)*(delta_anti_chatter+delta_anti_chatter_prev)+theta_anti_chatter_prev);
         
         theta_anti_chatter_prev=theta_anti_chatter;
         delta_anti_chatter_prev=delta_anti_chatter;
         e_pll_prev=e_pll;
         
         //Set angle
-        electrical_angle=(theta_out);
+        electrical_angle=(theta_anti_chatter);
         
         //angle_prev = electrical_angle /_motor->pole_pairs;
         hfi_calculated=true;
