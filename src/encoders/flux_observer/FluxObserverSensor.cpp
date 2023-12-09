@@ -84,10 +84,10 @@ void FluxObserverSensor::update() {
         float curr_pll_time=micros();
         Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
         if(e>0){
-          sigma=1.0f/Ts;
+          sigma=1.0;
         }
         else if (e<0){
-          sigma=-1.0f/Ts;
+          sigma=-1.0;
         }
 
         else{
