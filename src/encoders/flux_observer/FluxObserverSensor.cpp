@@ -85,8 +85,8 @@ void FluxObserverSensor::update() {
         Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
 
 
-        kp=1.0f/Ts
-        ki=1000.0f/Ts
+        kp=1.0f/Ts;
+        ki=1000.0f/Ts;
         if(e>0){
           sigma=1.0;
         }
