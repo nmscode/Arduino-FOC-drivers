@@ -46,8 +46,9 @@ void FluxObserverSensor::update() {
   // Estimate the BEMF and use HFI if it's below the threshold and HFI is enabled
   //kp=1.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
   //ki=10.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
-  kw=2.0f;
-  ktheta=10.0f;
+  kw=5.0f;
+  ktheta=50.0f;
+
   float bemf = _motor->voltage.q - _motor->phase_resistance * _motor->current.q;
   if (fabs(bemf < bemf_threshold)){
     if(_motor->hfi_enabled){
@@ -83,6 +84,10 @@ void FluxObserverSensor::update() {
         //Position Observer
         float curr_pll_time=micros();
         Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
+
+
+        kp=1.0f/Ts
+        ki=1000.0f/Ts
         if(e>0){
           sigma=1.0;
         }
@@ -106,6 +111,15 @@ void FluxObserverSensor::update() {
         input_prev=input;
 
         theta_out_prev=theta_out;
+        //PLL for anti chatter
+        e_pll=theta_out-theta_anti_chatter
+        delta_anti_chatter=((2.0f*kp+ki*Ts)*e_pll + (ki*Ts-2.0f*kp)*e_pll_prev)/2.0f + delta_anti_chatter_prev; //bilinear transform based difference equation of transfer function kp+ki/s
+        theta_anti_chatter=(Ts/2.0f)*(delta_anti_chatter+delta_anti_chatter_prev)+theta_anti_chatter_prev;
+        
+        theta_anti_chatter_prev=theta_anti_chatter;
+        delta_anti_chatter_prev=delta_anti_chatter;
+        e_pll_prev=e_pll;
+        
         //Set angle
         electrical_angle=(theta_out);
         
