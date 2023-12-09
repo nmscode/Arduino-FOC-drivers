@@ -109,7 +109,16 @@ void FluxObserverSensor::update() {
         second_integral_input_prev=second_integral_input;
         input_prev=input;
 
-        theta_out_prev=theta_out;        
+        theta_out_prev=theta_out;
+        //PLL for anti chatter
+        e_pll=theta_out-theta_anti_chatter
+        delta_anti_chatter=((2.0f*kp+ki*Ts)*e_pll + (ki*Ts-2.0f*kp)*e_pll_prev)/2.0f + delta_anti_chatter_prev; //bilinear transform based difference equation of transfer function kp+ki/s
+        theta_anti_chatter=(Ts/2.0f)*(delta_anti_chatter+delta_anti_chatter_prev)+theta_anti_chatter_prev;
+        
+        theta_anti_chatter_prev=theta_anti_chatter;
+        delta_anti_chatter_prev=delta_anti_chatter;
+        e_pll_prev=e_pll;
+        
         //Set angle
         electrical_angle=(theta_out);
         
