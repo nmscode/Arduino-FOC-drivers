@@ -49,7 +49,6 @@ class FluxObserverSensor : public Sensor
     float delta_i_qh, delta_i_dh;
     float prev_pll_time;
     float hfi_frequency=2000;
-    float theta_anti_chatter_prev,theta_anti_chatter, delta_anti_chatter_prev, delta_anti_chatter, e_pll_prev, e_pll, ki, kp; //PLL vals
 };
 
 #endif

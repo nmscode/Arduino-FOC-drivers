@@ -26,16 +26,7 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   second_integral_input=0;
   second_integral_input_prev=0;
   prev_pll_time=micros();
-  sigma=1.0;
-
-  theta_anti_chatter=0;
-  theta_anti_chatter_prev=0;
-  delta_anti_chatter=0;
-  delta_anti_chatter_prev=0;
-  e_pll=0;
-  e_pll_prev=0;
-  ki=1000.0f;
-  kp=1.0f;
+  sigma=0.0;
 }
 
 
@@ -55,8 +46,8 @@ void FluxObserverSensor::update() {
   // Estimate the BEMF and use HFI if it's below the threshold and HFI is enabled
   //kp=1.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
   //ki=10.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
-  kw=5.0f;
-  ktheta=50.0f;
+  kw=30.0f;
+  ktheta=300.0f;
   float bemf = _motor->voltage.q - _motor->phase_resistance * _motor->current.q;
   if (fabs(bemf < bemf_threshold)){
     if(_motor->hfi_enabled){
@@ -94,24 +85,22 @@ void FluxObserverSensor::update() {
         Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
 
 
-        kp=1.0f/Ts;
-        ki=1000.0f/Ts;
-        if(e>0){
-          sigma=1.0;
+
+        if(e>0.0f){
+          sigma=0.1f;
         }
-        else if (e<0){
-          sigma=-1.0;
+        else if (e<-0.0f){
+          sigma=-0.1f;
         }
 
         else{
-          sigma=0.0;
+          sigma=0.0f;
         }
         input=(kw*sigma);
         wrotor = (Ts/2.0f)*(input+input_prev)+wrotor_prev;//((2.0f*kp+ki*Ts)*e + (ki*Ts-2.0f*kp)*e_in_prev)/2.0f + wrotor_prev; //bilinear transform based difference equation of transfer function kp+ki/s
         second_integral_input=wrotor+ktheta*sigma;
         theta_out = (((Ts/2.0f)*(second_integral_input+second_integral_input_prev)+theta_out_prev)); //#1/s transfer function. just integration
-        e_pll=(theta_out-theta_anti_chatter)/Ts
-        theta_out=_normalizeAngle(theta_out)
+        theta_out=_normalizeAngle(theta_out);
         prev_pll_time=curr_pll_time;
         i_qh_prev=i_qh;
         i_dh_prev=i_dh;
@@ -121,17 +110,9 @@ void FluxObserverSensor::update() {
         input_prev=input;
 
         theta_out_prev=theta_out;
-        //PLL for anti chatter
-        
-        delta_anti_chatter=((2.0f*kp+ki*Ts)*e_pll + (ki*Ts-2.0f*kp)*e_pll_prev)/2.0f + delta_anti_chatter_prev; //bilinear transform based difference equation of transfer function kp+ki/s
-        theta_anti_chatter=_normalizeAngle((Ts/2.0f)*(delta_anti_chatter+delta_anti_chatter_prev)+theta_anti_chatter_prev);
-        
-        theta_anti_chatter_prev=theta_anti_chatter;
-        delta_anti_chatter_prev=delta_anti_chatter;
-        e_pll_prev=e_pll;
-        
+       
         //Set angle
-        electrical_angle=(theta_anti_chatter);
+        electrical_angle=(theta_out);
         
         //angle_prev = electrical_angle /_motor->pole_pairs;
         hfi_calculated=true;
