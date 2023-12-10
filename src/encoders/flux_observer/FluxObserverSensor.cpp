@@ -47,8 +47,8 @@ void FluxObserverSensor::update() {
   // Estimate the BEMF and use HFI if it's below the threshold and HFI is enabled
   //kp=1.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
   //ki=10.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
-  kw=30.0f;
-  ktheta=300.0f;
+  kw=1000.0f;
+  ktheta=200.0f;
   float bemf = _motor->voltage.q - _motor->phase_resistance * _motor->current.q;
   if (fabs(bemf < bemf_threshold)){
     if(_motor->hfi_enabled){
@@ -113,7 +113,7 @@ void FluxObserverSensor::update() {
         theta_out_prev=theta_out;
        
         //Set angle
-        electrical_angle=theta_lpf.getLp(theta_out);
+        electrical_angle=(theta_out);
         
         //angle_prev = electrical_angle /_motor->pole_pairs;
         hfi_calculated=true;
