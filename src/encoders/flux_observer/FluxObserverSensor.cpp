@@ -12,6 +12,7 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   }
   filter_calc_q = MultiFilter(1.0f/1000.0f);
   q_lp=MultiFilter(1.0f/400.0f);
+  theta_lpf=MultiFilter(1.0f/100.0f);
 
   // filter_calc_d = MultiFilter(1.0f/1500.0f);
   // d_lp=MultiFilter(1.0f/200.0f);
@@ -112,7 +113,7 @@ void FluxObserverSensor::update() {
         theta_out_prev=theta_out;
        
         //Set angle
-        electrical_angle=(theta_out);
+        electrical_angle=theta_lpf.getLp(theta_out);
         
         //angle_prev = electrical_angle /_motor->pole_pairs;
         hfi_calculated=true;
