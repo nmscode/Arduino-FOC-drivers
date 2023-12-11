@@ -137,7 +137,7 @@ void FluxObserverSensor::update() {
     }
   }
   
-  float now;
+  float now=micros();
   if(!hfi_calculated){
     sensor_cnt = 0;
 
@@ -178,7 +178,6 @@ void FluxObserverSensor::update() {
       // to David Molony as the original author must be noted.
 
       // Flux linkage observer    
-      now = _micros();
       float Ts = ( now - angle_prev_ts) * 1e-6f; 
       flux_alpha = _constrain( flux_alpha + (_motor->Ualpha - _motor->phase_resistance * i_alpha) * Ts -
             _motor->phase_inductance * (i_alpha - i_alpha_prev),-flux_linkage, flux_linkage);
