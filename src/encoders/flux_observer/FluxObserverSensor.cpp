@@ -97,8 +97,21 @@ void FluxObserverSensor::update() {
         else{
           sigma=0.0f;
         }
+        gsigma-=sigmaList[sigmaListind];
+        sigmaList[sigmaListind]=sigma;
+        gsigma+=sigma;
+        sigmaListind+=1;
+        if(sigmaListind>3){
+          sigmaListind=0;
+        }
         input=(kw*sigma);
-        wrotor = (Ts/2.0f)*(input+input_prev)+wrotor_prev;//((2.0f*kp+ki*Ts)*e + (ki*Ts-2.0f*kp)*e_in_prev)/2.0f + wrotor_prev; //bilinear transform based difference equation of transfer function kp+ki/s
+        if(gsigma==0){
+          wrotor=wrotor_prev;
+          }
+        else{
+          wrotor = (Ts/2.0f)*(input+input_prev)+wrotor_prev;
+        }
+        //((2.0f*kp+ki*Ts)*e + (ki*Ts-2.0f*kp)*e_in_prev)/2.0f + wrotor_prev; //bilinear transform based difference equation of transfer function kp+ki/s
         second_integral_input=wrotor+ktheta*sigma;
         theta_out = (((Ts/2.0f)*(second_integral_input+second_integral_input_prev)+theta_out_prev)); //#1/s transfer function. just integration
         theta_out=_normalizeAngle(theta_out);

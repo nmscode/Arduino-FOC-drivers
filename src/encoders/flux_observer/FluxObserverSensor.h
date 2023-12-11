@@ -49,6 +49,9 @@ class FluxObserverSensor : public Sensor
     float delta_i_qh, delta_i_dh;
     float prev_pll_time;
     float hfi_frequency=2000;
+    float sigmaList [4]={0,0,0,0};
+    int sigmaListind=0;
+    float gsigma=0;
 };
 
 #endif
