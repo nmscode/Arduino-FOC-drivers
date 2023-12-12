@@ -12,7 +12,8 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   }
   filter_calc_q = MultiFilter(1.0f/1000.0f);
   q_lp=MultiFilter(1.0f/400.0f);
-  theta_lpf=MultiFilter(1.0f/100.0f);
+  theta_lpf_sin=MultiFilter(1.0f/100.0f);
+  theta_lpf_cos=MultiFilter(1.0f/100.0f);
 
   // filter_calc_d = MultiFilter(1.0f/1500.0f);
   // d_lp=MultiFilter(1.0f/200.0f);
@@ -48,7 +49,7 @@ void FluxObserverSensor::update() {
   //kp=1.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
   //ki=10.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
   kw=1000.0f;
-  ktheta=200.0f;
+  ktheta=300.0f;
   float bemf = _motor->voltage.q - _motor->phase_resistance * _motor->current.q;
   if (fabs(bemf < bemf_threshold)){
     if(_motor->hfi_enabled){
@@ -97,20 +98,8 @@ void FluxObserverSensor::update() {
         else{
           sigma=0.0f;
         }
-        gsigma-=sigmaList[sigmaListind];
-        sigmaList[sigmaListind]=sigma;
-        gsigma+=sigma;
-        sigmaListind+=1;
-        if(sigmaListind>3){
-          sigmaListind=0;
-        }
         input=(kw*sigma);
-        if(gsigma==0){
-          wrotor=wrotor_prev;
-          }
-        else{
-          wrotor = (Ts/2.0f)*(input+input_prev)+wrotor_prev;
-        }
+        wrotor = (Ts/2.0f)*(input+input_prev)+wrotor_prev;
         //((2.0f*kp+ki*Ts)*e + (ki*Ts-2.0f*kp)*e_in_prev)/2.0f + wrotor_prev; //bilinear transform based difference equation of transfer function kp+ki/s
         second_integral_input=wrotor+ktheta*sigma;
         theta_out = (((Ts/2.0f)*(second_integral_input+second_integral_input_prev)+theta_out_prev)); //#1/s transfer function. just integration
@@ -124,9 +113,10 @@ void FluxObserverSensor::update() {
         input_prev=input;
 
         theta_out_prev=theta_out;
-       
+        smooth_theta_cos=theta_lpf_cos.getLp(_cos(theta_out));
+        smooth_theta_sin=theta_lpf_sin.getLp(_sin(theta_out));
         //Set angle
-        electrical_angle=(theta_out);
+        electrical_angle=_normalizeAngle(_atan2(smooth_theta_sin,smooth_theta_cos));
         
         //angle_prev = electrical_angle /_motor->pole_pairs;
         hfi_calculated=true;
