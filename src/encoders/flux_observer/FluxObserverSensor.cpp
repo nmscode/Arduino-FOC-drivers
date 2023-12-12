@@ -12,8 +12,8 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   }
   filter_calc_q = MultiFilter(1.0f/1000.0f);
   q_lp=MultiFilter(1.0f/400.0f);
-  theta_lpf_sin=MultiFilter(1.0f/100.0f);
-  theta_lpf_cos=MultiFilter(1.0f/100.0f);
+  theta_lpf_sin=MultiFilter(1.0f/500.0f);
+  theta_lpf_cos=MultiFilter(1.0f/500.0f);
 
   // filter_calc_d = MultiFilter(1.0f/1500.0f);
   // d_lp=MultiFilter(1.0f/200.0f);
