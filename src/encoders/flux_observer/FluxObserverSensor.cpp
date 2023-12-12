@@ -10,8 +10,8 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   if (_isset(_motor->pole_pairs) && _isset(_motor->KV_rating)){
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor->KV_rating) * (_motor->pole_pairs * 2));
   }
-  filter_calc_q = MultiFilter(1.0f/3769.0f);
-  q_lp=MultiFilter(1.0f/150.0f);
+  filter_calc_q = MultiFilter(1.0f/1000.0f);
+  q_lp=MultiFilter(1.0f/400.0f);
   theta_lpf_sin=MultiFilter(1.0f/100.0f);
   theta_lpf_cos=MultiFilter(1.0f/100.0f);
 
