@@ -61,14 +61,29 @@ void FluxObserverSensor::update() {
         // read current phase currents
         current = _motor->current_sense->getPhaseCurrents();
 
-        float mid = (1.f/3) * (current.a + current.b + current.c);
-        float a = current.a - mid;
-        float b = current.b - mid;
-        i_alpha = a;
-        i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
-        float ct;
-        float st;
-        _sincos(theta_out, &st, &ct);
+        // calculate clarke transform
+        if(!current.c){
+            // if only two measured currents
+            i_alpha = current.a;  
+            i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
+        }else if(!current.a){
+            // if only two measured currents
+            float a = -current.c - current.b;
+            i_alpha = a;  
+            i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
+        }else if(!current.b){
+            // if only two measured currents
+            float b = -current.a - current.c;
+            i_alpha = current.a;  
+            i_beta = _1_SQRT3 * current.a + _2_SQRT3 * b;
+        } else {
+            // signal filtering using identity a + b + c = 0. Assumes measurement error is normally distributed.
+            float mid = (1.f/3) * (current.a + current.b + current.c);
+            float a = current.a - mid;
+            float b = current.b - mid;
+            i_alpha = a;
+            i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
+        }
 
         i_qh=(i_beta * ct - i_alpha * st);
         //i_dh=filter_calc_d.getBp(i_alpha * ct + i_beta * st);
