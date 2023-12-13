@@ -106,10 +106,10 @@ void FluxObserverSensor::update() {
 
 
         if(e>0.0f){
-          sigma=0.1f;
+          sigma=1.0f;
         }
-        else if (e<-0.0f){
-          sigma=-0.1f;
+        else if (e<0.0f){
+          sigma=-1.0f;
         }
 
         else{
@@ -135,9 +135,10 @@ void FluxObserverSensor::update() {
         //Set angle
         electrical_angle=_normalizeAngle(_atan2(smooth_theta_sin,smooth_theta_cos));
         
-        //angle_prev = electrical_angle /_motor->pole_pairs;
+        angle_prev = electrical_angle /_motor->pole_pairs;
         hfi_calculated=true;
-        //return;
+        angle_prev_ts=micros();
+        return;
     }
     else{
     return;
