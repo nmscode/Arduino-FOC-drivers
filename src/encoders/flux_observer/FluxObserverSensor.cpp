@@ -48,7 +48,7 @@ void FluxObserverSensor::update() {
   // Estimate the BEMF and use HFI if it's below the threshold and HFI is enabled
   //kp=1.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
   //ki=10.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
-  kw=1900.0f;
+  kw=1000.0f;
   ktheta=300.0f;
   float bemf = _motor->voltage.q - _motor->phase_resistance * _motor->current.q;
   if (fabs(bemf < bemf_threshold)){
@@ -96,7 +96,7 @@ void FluxObserverSensor::update() {
         //delta_i_dh=d_lp.getLp(_motor->hfi_state*(i_dh-i_dh_prev));
         
         atan_test=_atan2(i_beta,i_alpha);
-        e=q_lp.getLp(filter_calc_q.getHp(i_qh)*_cos(_normalizeAngle(_motor->hfi_dt*_2PI/((1.0f/hfi_frequency)*1000000.0f))));//ke*delta_i_qh;
+        e=q_lp.getLp(filter_calc_q.getHp(i_qh)*_cos(_normalizeAngle(micros()*_2PI/((1.0f/hfi_frequency)*1000000.0f))));//ke*delta_i_qh;
 
         
         //Position Observer
@@ -106,10 +106,10 @@ void FluxObserverSensor::update() {
 
 
         if(e>0.0f){
-          sigma=1.0f;
+          sigma=0.1f;
         }
         else if (e<0.0f){
-          sigma=-1.0f;
+          sigma=-0.1f;
         }
 
         else{
@@ -135,10 +135,10 @@ void FluxObserverSensor::update() {
         //Set angle
         electrical_angle=_normalizeAngle(_atan2(smooth_theta_sin,smooth_theta_cos));
         
-        angle_prev = electrical_angle /_motor->pole_pairs;
+        //angle_prev = electrical_angle /_motor->pole_pairs;
         hfi_calculated=true;
-        angle_prev_ts=micros();
-        return;
+        //angle_prev_ts=micros();
+        //return;
     }
     else{
     return;
