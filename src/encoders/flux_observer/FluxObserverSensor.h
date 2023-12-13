@@ -46,9 +46,9 @@ class FluxObserverSensor : public Sensor
     bool hfi_calculated=false;
     PhaseCurrent_s current;
     float smooth_theta_cos, smooth_theta_sin;
-    float delta_i_qh, delta_i_dh;
+    float delta_i_qh, delta_i_dh ,atan_test;
     float prev_pll_time;
-    float hfi_frequency=2000;
+    float hfi_frequency=1500;
     float sigmaList [4]={0,0,0,0};
     int sigmaListind=0;
     float gsigma=0;
