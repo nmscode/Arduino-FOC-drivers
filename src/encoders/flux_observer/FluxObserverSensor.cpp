@@ -242,5 +242,5 @@ void FluxObserverSensor::init(){
 	Shaft angle calculation
 */
 float FluxObserverSensor::getSensorAngle(){
-  return 0;
+  return angle_prev;
 }
