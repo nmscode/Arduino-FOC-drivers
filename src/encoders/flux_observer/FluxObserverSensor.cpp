@@ -90,7 +90,7 @@ void FluxObserverSensor::update() {
         
         float ct;
         float st;
-        _sincos(theta_out, &st, &ct);
+        _sincos(_normalizeAngle(theta_out+_PI/4), &st, &ct);
         i_qh=filter_calc_q.getHp((i_beta * ct - i_alpha * st)-_motor->current_sp);
         i_dh=filter_calc_d.getHp(i_alpha * ct + i_beta * st);
 
