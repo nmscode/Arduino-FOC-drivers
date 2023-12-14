@@ -49,10 +49,8 @@ class FluxObserverSensor : public Sensor
     float delta_i_qh, delta_i_dh ,atan_test;
     float prev_pll_time;
     float hfi_frequency=1500;
-    float sigmaList [4]={0,0,0,0};
-    int sigmaListind=0;
-    float gsigma=0;
-    
+    float flux_observer_theta_out;
+  
 };
 
 #endif

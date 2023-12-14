@@ -29,6 +29,8 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   second_integral_input_prev=0;
   prev_pll_time=micros();
   sigma=0.0;
+  kw=120.0f;
+  ktheta=15.0f;
 }
 
 
@@ -48,8 +50,34 @@ void FluxObserverSensor::update() {
   // Estimate the BEMF and use HFI if it's below the threshold and HFI is enabled
   //kp=1.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
   //ki=10.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
-  kw=120.0f;
-  ktheta=15.0f;
+
+  // read current phase currents
+  current = _motor->current_sense->getPhaseCurrents();
+
+  // calculate clarke transform
+  if(!current.c){
+      // if only two measured currents
+      i_alpha = current.a;  
+      i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
+  }else if(!current.a){
+      // if only two measured currents
+      float a = -current.c - current.b;
+      i_alpha = a;  
+      i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
+  }else if(!current.b){
+      // if only two measured currents
+      float b = -current.a - current.c;
+      i_alpha = current.a;  
+      i_beta = _1_SQRT3 * current.a + _2_SQRT3 * b;
+  } else {
+      // signal filtering using identity a + b + c = 0. Assumes measurement error is normally distributed.
+      float mid = (1.f/3) * (current.a + current.b + current.c);
+      float a = current.a - mid;
+      float b = current.b - mid;
+      i_alpha = a;
+      i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
+  }
+
   float bemf = _motor->voltage.q - _motor->phase_resistance * _motor->current.q;
   if (fabs(bemf < bemf_threshold)){
     if(_motor->hfi_enabled){
@@ -58,37 +86,12 @@ void FluxObserverSensor::update() {
           return;
         }
         sensor_cnt = 0;
-        // read current phase currents
-        current = _motor->current_sense->getPhaseCurrents();
-
-        // calculate clarke transform
-        if(!current.c){
-            // if only two measured currents
-            i_alpha = current.a;  
-            i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
-        }else if(!current.a){
-            // if only two measured currents
-            float a = -current.c - current.b;
-            i_alpha = a;  
-            i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
-        }else if(!current.b){
-            // if only two measured currents
-            float b = -current.a - current.c;
-            i_alpha = current.a;  
-            i_beta = _1_SQRT3 * current.a + _2_SQRT3 * b;
-        } else {
-            // signal filtering using identity a + b + c = 0. Assumes measurement error is normally distributed.
-            float mid = (1.f/3) * (current.a + current.b + current.c);
-            float a = current.a - mid;
-            float b = current.b - mid;
-            i_alpha = a;
-            i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
-        }
+        
         float ct;
         float st;
         _sincos(theta_out, &st, &ct);
         i_qh=(i_beta * ct - i_alpha * st)-_motor->current_sp;
-        //i_dh=filter_calc_d.getBp(i_alpha * ct + i_beta * st);
+        i_dh=(i_alpha * ct + i_beta * st);
 
         
 
@@ -96,7 +99,7 @@ void FluxObserverSensor::update() {
         //delta_i_dh=d_lp.getLp(_motor->hfi_state*(i_dh-i_dh_prev));
         
         atan_test=_atan2(i_beta,i_alpha);
-        e=q_lp.getLp(filter_calc_q.getHp(i_qh)*_cos(_normalizeAngle(micros()*_2PI/((1.0f/hfi_frequency)*1000000.0f))));//ke*delta_i_qh;
+        e=q_lp.getLp(filter_calc_q.getHp(i_qh-i_dh)*_cos(_normalizeAngle(micros()*_2PI/((1.0f/hfi_frequency)*1000000.0f))));//ke*delta_i_qh;
 
         
         //Position Observer
@@ -148,34 +151,6 @@ void FluxObserverSensor::update() {
   float now=micros();
   if(!hfi_calculated){
     sensor_cnt = 0;
-
-  // read current phase currents
-    current = _motor->current_sense->getPhaseCurrents();
-
-    // calculate clarke transform
-    if(!current.c){
-        // if only two measured currents
-        i_alpha = current.a;  
-        i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
-    }else if(!current.a){
-        // if only two measured currents
-        float a = -current.c - current.b;
-        i_alpha = a;  
-        i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
-    }else if(!current.b){
-        // if only two measured currents
-        float b = -current.a - current.c;
-        i_alpha = current.a;  
-        i_beta = _1_SQRT3 * current.a + _2_SQRT3 * b;
-    } else {
-        // signal filtering using identity a + b + c = 0. Assumes measurement error is normally distributed.
-        float mid = (1.f/3) * (current.a + current.b + current.c);
-        float a = current.a - mid;
-        float b = current.b - mid;
-        i_alpha = a;
-        i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
-    }
-
       // This work deviates slightly from the BSD 3 clause licence.
       // The work here is entirely original to the MESC FOC project, and not based
       // on any appnotes, or borrowed from another project. This work is free to
