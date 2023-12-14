@@ -10,7 +10,7 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   if (_isset(_motor->pole_pairs) && _isset(_motor->KV_rating)){
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor->KV_rating) * (_motor->pole_pairs * 2));
   }
-  filter_calc_q = MultiFilter(1.0f/1000.0f);
+  filter_calc_q = MultiFilter(1.0f/1100.0f);
   q_lp=MultiFilter(1.0f/400.0f);
   theta_lpf_sin=MultiFilter(1.0f/100.0f);
   theta_lpf_cos=MultiFilter(1.0f/100.0f);
@@ -48,8 +48,8 @@ void FluxObserverSensor::update() {
   // Estimate the BEMF and use HFI if it's below the threshold and HFI is enabled
   //kp=1.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
   //ki=10.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
-  kw=1000.0f;
-  ktheta=300.0f;
+  kw=120.0f;
+  ktheta=15.0f;
   float bemf = _motor->voltage.q - _motor->phase_resistance * _motor->current.q;
   if (fabs(bemf < bemf_threshold)){
     if(_motor->hfi_enabled){
@@ -106,10 +106,10 @@ void FluxObserverSensor::update() {
 
 
         if(e>0.0f){
-          sigma=0.1f;
+          sigma=1.0f;
         }
         else if (e<0.0f){
-          sigma=-0.1f;
+          sigma=-1.0f;
         }
 
         else{
