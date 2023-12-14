@@ -31,7 +31,7 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   prev_pll_time=micros();
   sigma=0.0;
   kw=120.0f;
-  ktheta=15.0f;
+  ktheta=250.0f;
 }
 
 
