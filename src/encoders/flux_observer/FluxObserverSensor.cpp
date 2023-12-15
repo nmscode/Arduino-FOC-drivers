@@ -29,8 +29,9 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   second_integral_input_prev=0;
   prev_pll_time=micros();
   sigma=0.0;
-  kw=15.0f;
-  ktheta=1.0f;
+  ka=5.0f;
+  kw=5.0f;
+  ktheta=5.0f;
 }
 
 
@@ -118,21 +119,22 @@ void FluxObserverSensor::update() {
         else{
           sigma=0.0f;
         }
-        input=(kw*sigma);
-        wrotor = (Ts/2.0f)*(input+input_prev)+wrotor_prev;
-        //((2.0f*kp+ki*Ts)*e + (ki*Ts-2.0f*kp)*e_in_prev)/2.0f + wrotor_prev; //bilinear transform based difference equation of transfer function kp+ki/s
-        second_integral_input=wrotor+ktheta*sigma;
-        theta_out = (((Ts/2.0f)*(second_integral_input+second_integral_input_prev)+theta_out_prev)); //#1/s transfer function. just integration
+        input=(ka*sigma);
+        accel+=(Ts/2.0f)*(input+input_prev);
+        second_integral_input=accel+kw*sigma;
+        wrotor += (Ts/2.0f)*(second_integral_input+second_integral_input_prev);
+        third_integral_input=wrotor+ktheta*sigma;
+        theta_out += ((Ts/2.0f)*(third_integral_input+third_integral_input_prev));
         theta_out=_normalizeAngle(theta_out);
+        
         prev_pll_time=curr_pll_time;
         i_qh_prev=i_qh;
         i_dh_prev=i_dh;
         //Shift values over
-        wrotor_prev=wrotor;
-        second_integral_input_prev=second_integral_input;
         input_prev=input;
-
-        theta_out_prev=theta_out;
+        second_integral_input_prev=second_integral_input;
+        third_integral_input=third_integral_input_prev;
+        
         smooth_theta_cos=theta_lpf_cos.getLp(_cos(theta_out));
         smooth_theta_sin=theta_lpf_sin.getLp(_sin(theta_out));
         //Set angle
