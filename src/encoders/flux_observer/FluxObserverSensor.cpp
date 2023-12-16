@@ -10,28 +10,28 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   if (_isset(_motor->pole_pairs) && _isset(_motor->KV_rating)){
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor->KV_rating) * (_motor->pole_pairs * 2));
   }
-  filter_calc_q = MultiFilter(1.0f/2000.0f);
-  q_lp=MultiFilter(1.0f/500.0f);
+  filter_calc_q = MultiFilter(1.0f/hfi_frequency);
+  q_lp=MultiFilter(1.0f/400.0f);
   theta_lpf_sin=MultiFilter(1.0f/100.0f);
   theta_lpf_cos=MultiFilter(1.0f/100.0f);
 
-  filter_calc_d = MultiFilter(1.0f/2000.0f);
+  filter_calc_d = MultiFilter(1.0f/hfi_frequency);
   //d_lp=MultiFilter(1.0f/200.0f);
 
   theta_out=0;
   _motor=m;
-  theta_out_prev=0;
   wrotor=0;
-  wrotor_prev=0;
   input=0;
   input_prev=0;
   second_integral_input=0;
   second_integral_input_prev=0;
+  third_integral_input=0;
+  third_integral_input_prev=0;
   prev_pll_time=micros();
   sigma=0.0;
-  ka=5.0f;
-  kw=5.0f;
-  ktheta=5.0f;
+  ka=9.0f;
+  kw=10.0f;
+  ktheta=11.0f;
 }
 
 
@@ -133,7 +133,7 @@ void FluxObserverSensor::update() {
         //Shift values over
         input_prev=input;
         second_integral_input_prev=second_integral_input;
-        third_integral_input=third_integral_input_prev;
+        third_integral_input_prev=third_integral_input;
         
         smooth_theta_cos=theta_lpf_cos.getLp(_cos(theta_out));
         smooth_theta_sin=theta_lpf_sin.getLp(_sin(theta_out));

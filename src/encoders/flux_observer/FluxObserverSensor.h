@@ -48,7 +48,7 @@ class FluxObserverSensor : public Sensor
     float smooth_theta_cos, smooth_theta_sin;
     float delta_i_qh, delta_i_dh ,atan_test;
     float prev_pll_time;
-    float hfi_frequency=2000;
+    float hfi_frequency=1000;
     float flux_observer_theta_out;
   
 };
