@@ -10,8 +10,8 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   if (_isset(_motor->pole_pairs) && _isset(_motor->KV_rating)){
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor->KV_rating) * (_motor->pole_pairs * 2));
   }
-  filter_calc_q = MultiFilter(1.0f/600.0f);
-  q_lp=MultiFilter(1.0f/200.0f);
+  filter_calc_q = MultiFilter(1.0f/4500.0f);
+  q_lp=MultiFilter(1.0f/400.0f);
   theta_lpf_sin=MultiFilter(1.0f/100.0f);
   theta_lpf_cos=MultiFilter(1.0f/100.0f);
 
@@ -30,8 +30,8 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   prev_pll_time=micros();
   sigma=0.0;
   ka=0.0f;
-  kw=100.0f;
-  ktheta=5.0f;
+  kw=200.0f;
+  ktheta=10.0f;
 }
 
 
@@ -90,7 +90,7 @@ void FluxObserverSensor::update() {
         
         float ct;
         float st;
-        _sincos(theta_out-_PI/4, &st, &ct);
+        _sincos(theta_out, &st, &ct);
         i_qh=filter_calc_q.getHp(i_beta * ct - i_alpha * st);
         i_dh=filter_calc_d.getHp(i_alpha * ct + i_beta * st);
 
@@ -100,7 +100,7 @@ void FluxObserverSensor::update() {
         //delta_i_dh=d_lp.getLp(_motor->hfi_state*(i_dh-i_dh_prev));
         
         atan_test=_atan2(i_qh-i_qh_prev,i_dh-i_dh_prev);
-        e=q_lp.getLp(((i_qh)-(i_dh))*_cos(_normalizeAngle(_motor->hfi_dt*_2PI/((1.0f/hfi_frequency)*1000000.0f))));//ke*delta_i_qh;
+        e=q_lp.getLp((i_qh)*_cos(_normalizeAngle(micros()*_2PI/((1.0f/hfi_frequency)*1000000.0f))));//ke*delta_i_qh;
 
         
         //Position Observer
@@ -138,7 +138,7 @@ void FluxObserverSensor::update() {
         smooth_theta_cos=theta_lpf_cos.getLp(_cos(theta_out));
         smooth_theta_sin=theta_lpf_sin.getLp(_sin(theta_out));
         //Set angle
-        electrical_angle=theta_out;//_normalizeAngle(_atan2(smooth_theta_sin,smooth_theta_cos));
+        electrical_angle=_normalizeAngle(_atan2(smooth_theta_sin,smooth_theta_cos));
         
         //angle_prev = electrical_angle /_motor->pole_pairs;
         hfi_calculated=true;
