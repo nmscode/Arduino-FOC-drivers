@@ -15,7 +15,6 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   q_hp2 = MultiFilter(1.0f/hpf_freq);
   q_hp3 = MultiFilter(1.0f/hpf_freq);
   q_hp4 = MultiFilter(1.0f/hpf_freq);
-  q_hp5=q_hp4 = MultiFilter(1.0f/hpf_freq);
 
   float lpf_freq=50.0f;
   q_lp=MultiFilter(1.0f/lpf_freq);
@@ -111,7 +110,7 @@ void FluxObserverSensor::update() {
         //delta_i_dh=d_lp.getLp(_motor->hfi_state*(i_dh-i_dh_prev));
         
         //atan_test=_atan2(i_qh-i_qh_prev,i_dh-i_dh_prev);
-        e=q_lp4.getLp(q_lp3.getLp(q_lp2.getLp(q_lp.getLp(q_hp5.getHp((i_qh)*_cos(_normalizeAngle(micros()*_2PI/((1.0f/hfi_frequency)*1000000.0f))))))));//ke*delta_i_qh;
+        e=q_lp4.getLp(q_lp3.getLp(q_lp2.getLp(q_lp.getLp((i_qh)*_cos(_normalizeAngle(micros()*_2PI/((1.0f/hfi_frequency)*1000000.0f)))))));//ke*delta_i_qh;
 
         
         //Position Observer
@@ -120,15 +119,15 @@ void FluxObserverSensor::update() {
 
 
 
-        if(e>0.0f){
-          sigma=1.0f;
+        if(e>0.01f){
+          sigma=0.05f;
         }
-        else if (e<0.0f){
-          sigma=-1.0f;
+        else if (e<-0.01f){
+          sigma=-0.05f;
         }
 
         else{
-          sigma=0.0f;
+          sigma=e;
         }
         input=(kw*sigma);
         wrotor = (Ts/2.0f)*(input+input_prev)+wrotor_prev;
