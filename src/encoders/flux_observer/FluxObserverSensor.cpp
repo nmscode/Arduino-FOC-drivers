@@ -101,14 +101,14 @@ void FluxObserverSensor::update() {
         float st;
         _sincos(theta_out, &st, &ct);
         i_qh=q_hp4.getHp(q_hp3.getHp(q_hp2.getHp(q_hp.getHp((i_beta * ct - i_alpha * st)-_motor->current_sp))));
-        i_dh=filter_calc_d.getBp(i_alpha * ct + i_beta * st);
+        //i_dh=filter_calc_d.getBp(i_alpha * ct + i_beta * st);
 
         
 
         //delta_i_qh=q_lp.getLp(_motor->hfi_state*(i_qh-i_qh_prev));
         //delta_i_dh=d_lp.getLp(_motor->hfi_state*(i_dh-i_dh_prev));
         
-        atan_test=_atan2(i_qh-i_qh_prev,i_dh-i_dh_prev);
+        //atan_test=_atan2(i_qh-i_qh_prev,i_dh-i_dh_prev);
         e=q_lp4.getLp(q_lp3.getLp(q_lp2.getLp(q_lp.getLp((i_qh)*_cos(_normalizeAngle(micros()*_2PI/((1.0f/hfi_frequency)*1000000.0f)))))));//ke*delta_i_qh;
 
         
@@ -130,7 +130,6 @@ void FluxObserverSensor::update() {
         }
         input=(kw*sigma);
         wrotor = (Ts/2.0f)*(input+input_prev)+wrotor_prev;
-        //((2.0f*kp+ki*Ts)*e + (ki*Ts-2.0f*kp)*e_in_prev)/2.0f + wrotor_prev; //bilinear transform based difference equation of transfer function kp+ki/s
         second_integral_input=wrotor+ktheta*sigma;
         theta_out = (((Ts/2.0f)*(second_integral_input+second_integral_input_prev)+theta_out_prev)); //#1/s transfer function. just integration
         theta_out=_normalizeAngle(theta_out);
