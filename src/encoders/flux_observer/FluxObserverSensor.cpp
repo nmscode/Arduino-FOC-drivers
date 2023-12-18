@@ -10,7 +10,7 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   if (_isset(_motor->pole_pairs) && _isset(_motor->KV_rating)){
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor->KV_rating) * (_motor->pole_pairs * 2));
   }
-  floar hpf_freq=1900.0f;
+  float hpf_freq=1900.0f;
   q_hp = MultiFilter(1.0f/hpf_freq);
   q_hp2 = MultiFilter(1.0f/hpf_freq);
   q_hp3 = MultiFilter(1.0f/hpf_freq);
