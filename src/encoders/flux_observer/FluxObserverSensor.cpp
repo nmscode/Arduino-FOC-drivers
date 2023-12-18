@@ -10,13 +10,13 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   if (_isset(_motor->pole_pairs) && _isset(_motor->KV_rating)){
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor->KV_rating) * (_motor->pole_pairs * 2));
   }
-  float hpf_freq=1600.0f;
+  float hpf_freq=1800.0f;
   q_hp = MultiFilter(1.0f/hpf_freq);
   q_hp2 = MultiFilter(1.0f/hpf_freq);
   q_hp3 = MultiFilter(1.0f/hpf_freq);
   q_hp4 = MultiFilter(1.0f/hpf_freq);
 
-  float lpf_freq=20.0f;
+  float lpf_freq=50.0f;
   q_lp=MultiFilter(1.0f/lpf_freq);
   q_lp2=MultiFilter(1.0f/lpf_freq);
   q_lp3=MultiFilter(1.0f/lpf_freq);
@@ -39,8 +39,8 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   second_integral_input_prev=0;
   prev_pll_time=micros();
   sigma=0.0;
-  kw=200.0f;
-  ktheta=10.0f;
+  kw=25.0f;
+  ktheta=2.5f;
 }
 
 
@@ -100,7 +100,7 @@ void FluxObserverSensor::update() {
         float ct;
         float st;
         _sincos(theta_out, &st, &ct);
-        i_qh=q_hp4.getHp(q_hp3.getHp(q_hp2.getHp(q_hp.getHp((i_beta * ct - i_alpha * st)-_motor->current_sp))));
+        i_qh=q_hp4.getHp(q_hp3.getHp(q_hp2.getHp(q_hp.getHp((i_beta * ct - i_alpha * st)))));
         //i_dh=filter_calc_d.getBp(i_alpha * ct + i_beta * st);
 
         
