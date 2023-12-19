@@ -40,8 +40,8 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   second_integral_input_prev=0;
   prev_pll_time=micros();
   sigma=0.0;
-  kw=25.0f;
-  ktheta=2.5f;
+  kw=10.0f;
+  ktheta=1.5f;
 }
 
 
@@ -63,7 +63,9 @@ void FluxObserverSensor::update() {
   //ki=10.0f;//0.1/(0.5/_motor->hfi_frequency);//PI value set based on desired dampening/settling time
 
   // read current phase currents
+  
   current = _motor->current_sense->getPhaseCurrents();
+  float heterodyne_time=micros();
 
   // calculate clarke transform
   if(!current.c){
@@ -101,7 +103,7 @@ void FluxObserverSensor::update() {
         float ct;
         float st;
         _sincos(theta_out, &st, &ct);
-        i_qh=q_hp4.getHp(q_hp3.getHp(q_hp2.getHp(q_hp.getHp((i_beta * ct - i_alpha * st)))));
+        i_qh=q_hp4.getHp(q_hp3.getHp(q_hp2.getHp(q_hp.getHp((i_beta * ct - i_alpha * st)-_motor->current_sp))));
         //i_dh=filter_calc_d.getBp(i_alpha * ct + i_beta * st);
 
         
@@ -110,7 +112,7 @@ void FluxObserverSensor::update() {
         //delta_i_dh=d_lp.getLp(_motor->hfi_state*(i_dh-i_dh_prev));
         
         //atan_test=_atan2(i_qh-i_qh_prev,i_dh-i_dh_prev);
-        e=q_lp4.getLp(q_lp3.getLp(q_lp2.getLp(q_lp.getLp((i_qh)*_cos(_normalizeAngle(micros()*_2PI/((1.0f/hfi_frequency)*1000000.0f)))))));//ke*delta_i_qh;
+        e=q_lp4.getLp(q_lp3.getLp(q_lp2.getLp(q_lp.getLp((i_qh)*_cos(_normalizeAngle(heterodyne_time*_2PI/((1.0f/hfi_frequency)*1000000.0f)))))));//ke*delta_i_qh;
 
         
         //Position Observer
@@ -119,11 +121,11 @@ void FluxObserverSensor::update() {
 
 
 
-        if(e>0.01f){
-          sigma=0.05f;
+        if(e>0.0f){
+          sigma=1.0f;
         }
-        else if (e<-0.01f){
-          sigma=-0.05f;
+        else if (e<0.0f){
+          sigma=-1.0f;
         }
 
         else{
@@ -143,10 +145,10 @@ void FluxObserverSensor::update() {
         input_prev=input;
 
         theta_out_prev=theta_out;
-        smooth_theta_cos=theta_lpf_cos.getLp(_cos(theta_out));
-        smooth_theta_sin=theta_lpf_sin.getLp(_sin(theta_out));
+        //smooth_theta_cos=theta_lpf_cos.getLp(_cos(theta_out));
+        //smooth_theta_sin=theta_lpf_sin.getLp(_sin(theta_out));
         //Set angle
-        electrical_angle=_normalizeAngle(_atan2(smooth_theta_sin,smooth_theta_cos));
+        electrical_angle=theta_out;//_normalizeAngle(_atan2(smooth_theta_sin,smooth_theta_cos));
         
         //angle_prev = electrical_angle /_motor->pole_pairs;
         hfi_calculated=true;
