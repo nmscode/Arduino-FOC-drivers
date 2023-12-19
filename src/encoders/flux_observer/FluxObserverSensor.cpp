@@ -40,8 +40,8 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   second_integral_input_prev=0;
   prev_pll_time=micros();
   sigma=0.0;
-  kw=10.0f;
-  ktheta=1.5f;
+  kw=1250.0f/1000000.0f;
+  ktheta=150.0f/1000000.0f;
 }
 
 
@@ -66,7 +66,9 @@ void FluxObserverSensor::update() {
   
   current = _motor->current_sense->getPhaseCurrents();
   float heterodyne_time=micros();
-
+  float curr_pll_time=micros();
+  Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
+  prev_pll_time=curr_pll_time;
   // calculate clarke transform
   if(!current.c){
       // if only two measured currents
@@ -116,11 +118,6 @@ void FluxObserverSensor::update() {
 
         
         //Position Observer
-        float curr_pll_time=micros();
-        Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
-
-
-
         if(e>0.0f){
           sigma=1.0f;
         }
@@ -136,7 +133,6 @@ void FluxObserverSensor::update() {
         second_integral_input=wrotor+ktheta*sigma;
         theta_out = (((Ts/2.0f)*(second_integral_input+second_integral_input_prev)+theta_out_prev)); //#1/s transfer function. just integration
         theta_out=_normalizeAngle(theta_out);
-        prev_pll_time=curr_pll_time;
         //i_qh_prev=i_qh;
         //i_dh_prev=i_dh;
         //Shift values over
