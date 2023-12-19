@@ -128,10 +128,10 @@ void FluxObserverSensor::update() {
         else{
           sigma=e;
         }
-        input=(kw*sigma);
-        wrotor = (Ts/2.0f)*(input+input_prev)+wrotor_prev;
+        input=kw*sigma;
+        wrotor = Ts*input+wrotor_prev;
         second_integral_input=wrotor+ktheta*sigma;
-        theta_out = (((Ts/2.0f)*(second_integral_input+second_integral_input_prev)+theta_out_prev)); //#1/s transfer function. just integration
+        theta_out = Ts*second_integral_input+theta_out_prev; //#1/s transfer function. just integration
         theta_out=_normalizeAngle(theta_out);
         //i_qh_prev=i_qh;
         //i_dh_prev=i_dh;
