@@ -40,8 +40,8 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   second_integral_input_prev=0;
   prev_pll_time=micros();
   sigma=0.0;
-  kw=1250.0f/1000000.0f;
-  ktheta=150.0f/1000000.0f;
+  kw=20.0f;
+  ktheta=2.0f;
 }
 
 
@@ -104,7 +104,7 @@ void FluxObserverSensor::update() {
         
         float ct;
         float st;
-        _sincos(theta_out, &st, &ct);
+        _sincos(electrical_angle, &st, &ct);
         i_qh=q_hp4.getHp(q_hp3.getHp(q_hp2.getHp(q_hp.getHp((i_beta * ct - i_alpha * st)-_motor->current_sp))));
         //i_dh=filter_calc_d.getBp(i_alpha * ct + i_beta * st);
 
@@ -132,7 +132,12 @@ void FluxObserverSensor::update() {
         wrotor = Ts*input+wrotor_prev;
         second_integral_input=wrotor+ktheta*sigma;
         theta_out = Ts*second_integral_input+theta_out_prev; //#1/s transfer function. just integration
-        theta_out=_normalizeAngle(theta_out);
+        if(theta_out<-_PI){
+          theta_out+=_2PI;
+        }
+        if(theta_out>_PI){
+          theta_out-=_2PI;
+        }
         //i_qh_prev=i_qh;
         //i_dh_prev=i_dh;
         //Shift values over
@@ -144,7 +149,7 @@ void FluxObserverSensor::update() {
         //smooth_theta_cos=theta_lpf_cos.getLp(_cos(theta_out));
         //smooth_theta_sin=theta_lpf_sin.getLp(_sin(theta_out));
         //Set angle
-        electrical_angle=theta_out;//_normalizeAngle(_atan2(smooth_theta_sin,smooth_theta_cos));
+        electrical_angle=_normalizeAngle(theta_out);//_normalizeAngle(_atan2(smooth_theta_sin,smooth_theta_cos));
         
         //angle_prev = electrical_angle /_motor->pole_pairs;
         hfi_calculated=true;
