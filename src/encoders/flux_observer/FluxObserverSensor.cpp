@@ -42,8 +42,8 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   prev_pll_time=micros();
   sigma=0.0f;
   ka=1.0f;
-  kw=6.0f;
-  ktheta=10.0f;
+  kw=20.0f;
+  ktheta=2.0f;
 }
 
 
@@ -116,7 +116,7 @@ void FluxObserverSensor::update() {
         //delta_i_dh=d_lp.getLp(_motor->hfi_state*(i_dh-i_dh_prev));
         
         //atan_test=_atan2(i_qh-i_qh_prev,i_dh-i_dh_prev);
-        e=q_lp4.getLp(q_lp3.getLp(q_lp2.getLp(q_lp.getLp((i_qh)*_cos(_normalizeAngle(heterodyne_time*_2PI/((1.0f/hfi_frequency)*1000000.0f)))))));//ke*delta_i_qh;
+        e=(q_lp.getLp((i_qh)*_cos(_normalizeAngle(heterodyne_time*_2PI/((1.0f/hfi_frequency)*1000000.0f)))));//ke*delta_i_qh;
 
         
         //Position Observer
@@ -130,7 +130,7 @@ void FluxObserverSensor::update() {
         else{
           sigma=e;
         }
-        accel+=ka*sigma;
+        accel+=ka*sigma*Ts;
         input=kw*sigma+accel;
         wrotor = Ts*input+wrotor_prev;
         second_integral_input=wrotor+ktheta*sigma;
