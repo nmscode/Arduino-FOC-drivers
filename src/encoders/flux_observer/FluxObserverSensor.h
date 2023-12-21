@@ -41,7 +41,7 @@ class FluxObserverSensor : public Sensor
     float bemf_threshold = 1000; // Bemf voltage amplitude when the flux observer should start tracking
     int8_t first = 1; // To skip angle difference calculation the first time
     float i_alpha, i_beta, i_qh, i_qh_prev, i_dh, i_dh_prev; //Stores the band passed currents and previous difference values
-    float Ts, e, theta_out, theta_out_prev, wrotor, wrotor_prev, second_integral_input,second_integral_input_prev, kw, ktheta, sigma, input, input_prev; //Position Observer values
+    float Ts, e, theta_out, theta_out_prev, wrotor, wrotor_prev,accel, second_integral_input,second_integral_input_prev, ka, kw, ktheta, sigma, input, input_prev; //Position Observer values
     MultiFilter q_hp, q_hp2, q_hp3, q_hp4, q_lp, q_lp2, q_lp3, q_lp4, filter_calc_d, d_lp, theta_lpf_sin,theta_lpf_cos; //Filters for HFI
     bool hfi_calculated=false;
     PhaseCurrent_s current;

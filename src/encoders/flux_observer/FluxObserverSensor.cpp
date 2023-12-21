@@ -29,18 +29,20 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   // filter_calc_d = MultiFilter(1.0f/1500.0f);
   //d_lp=MultiFilter(1.0f/200.0f);
 
-  theta_out=0;
+  theta_out=0.0f;
   _motor=m;
-  theta_out_prev=0;
-  wrotor=0;
-  wrotor_prev=0;
-  input=0;
-  input_prev=0;
-  second_integral_input=0;
-  second_integral_input_prev=0;
+  accel=0.0f;
+  theta_out_prev=0.0f;
+  wrotor=0.0f;
+  wrotor_prev=0.0f;
+  input=0.0f;
+  input_prev=0.0f;
+  second_integral_input=0.0f;
+  second_integral_input_prev=0.0f;
   prev_pll_time=micros();
-  sigma=0.0;
-  kw=10.0f;
+  sigma=0.0f;
+  ka=1.0f;
+  kw=6.0f;
   ktheta=10.0f;
 }
 
@@ -128,7 +130,8 @@ void FluxObserverSensor::update() {
         else{
           sigma=e;
         }
-        input=kw*sigma;
+        accel+=ka*sigma;
+        input=kw*sigma+accel;
         wrotor = Ts*input+wrotor_prev;
         second_integral_input=wrotor+ktheta*sigma;
         theta_out = Ts*second_integral_input+theta_out_prev; //#1/s transfer function. just integration
