@@ -11,16 +11,17 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
     flux_linkage = 60 / ( _sqrt(3) * _PI * (_motor->KV_rating) * (_motor->pole_pairs * 2));
   }
   float hpf_freq=1600.0f;
-  q_hp = MultiFilter(1.0f/hpf_freq);
-  q_hp2 = MultiFilter(1.0f/hpf_freq);
-  q_hp3 = MultiFilter(1.0f/hpf_freq);
-  q_hp4 = MultiFilter(1.0f/hpf_freq);
+  float q_val=0.7;
+  q_hp = MultiFilter(1.0f/hpf_freq,q_val);
+  q_hp2 = MultiFilter(1.0f/hpf_freq,q_val);
+  q_hp3 = MultiFilter(1.0f/hpf_freq,q_val);
+  q_hp4 = MultiFilter(1.0f/hpf_freq,q_val);
 
   float lpf_freq=20.0f;
-  q_lp=MultiFilter(1.0f/lpf_freq);
-  q_lp2=MultiFilter(1.0f/lpf_freq);
-  q_lp3=MultiFilter(1.0f/lpf_freq);
-  q_lp4=MultiFilter(1.0f/lpf_freq);
+  q_lp=MultiFilter(1.0f/lpf_freq,q_val);
+  q_lp2=MultiFilter(1.0f/lpf_freq,q_val);
+  q_lp3=MultiFilter(1.0f/lpf_freq,q_val);
+  q_lp4=MultiFilter(1.0f/lpf_freq,q_val);
 
  
   theta_lpf_sin=MultiFilter(1.0f/100.0f);
