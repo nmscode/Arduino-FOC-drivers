@@ -68,8 +68,8 @@ void FluxObserverSensor::update() {
   // read current phase currents
   
   current = _motor->current_sense->getPhaseCurrents();
-  float heterodyne_time=micros();
-  float curr_pll_time=micros();
+  unsigned long heterodyne_time=micros();
+  unsigned long curr_pll_time=micros();
   Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
   prev_pll_time=curr_pll_time;
   // calculate clarke transform

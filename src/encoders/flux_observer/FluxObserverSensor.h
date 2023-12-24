@@ -47,7 +47,7 @@ class FluxObserverSensor : public Sensor
     PhaseCurrent_s current;
     float smooth_theta_cos, smooth_theta_sin;
     float delta_i_qh, delta_i_dh ,atan_test;
-    float prev_pll_time;
+    unsigned long prev_pll_time;
     float hfi_frequency=2000.0f;
     float flux_observer_theta_out;
   
