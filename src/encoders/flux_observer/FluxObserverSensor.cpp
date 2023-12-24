@@ -153,7 +153,7 @@ void FluxObserverSensor::update() {
         //smooth_theta_cos=theta_lpf_cos.getLp(_cos(theta_out));
         //smooth_theta_sin=theta_lpf_sin.getLp(_sin(theta_out));
         //Set angle
-        electrical_angle=_normalizeAngle(theta_out+_PI);//_normalizeAngle(_atan2(smooth_theta_sin,smooth_theta_cos));
+        electrical_angle=_normalizeAngle(theta_out);//_normalizeAngle(_atan2(smooth_theta_sin,smooth_theta_cos));
         
         //angle_prev = electrical_angle /_motor->pole_pairs;
         hfi_calculated=true;
