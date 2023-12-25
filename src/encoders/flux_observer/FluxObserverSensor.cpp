@@ -117,7 +117,7 @@ void FluxObserverSensor::update() {
         //delta_i_dh=d_lp.getLp(_motor->hfi_state*(i_dh-i_dh_prev));
         
         //atan_test=_atan2(i_qh-i_qh_prev,i_dh-i_dh_prev);
-        e=(q_lp.getLp((i_qh)*_cos(_normalizeAngle(heterodyne_time*_2PI/((1.0f/hfi_frequency)*1000000.0f)))));//ke*delta_i_qh;
+        e=(q_lp.getLp((i_qh)*_cos(_normalizeAngle(motor->hfi_dt*_2PI/((1.0f/hfi_frequency)*1000000.0f)))));//ke*delta_i_qh;
 
         
         //Position Observer
