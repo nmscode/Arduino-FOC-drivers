@@ -45,6 +45,7 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   ka=1.0f;
   kw=20.0f;
   ktheta=2.0f;
+  electrical_angle=0;
 }
 
 
@@ -67,34 +68,34 @@ void FluxObserverSensor::update() {
 
   // read current phase currents
   
-  current = _motor->current_sense->getPhaseCurrents();
+  current = _motor->current_sense->getFOCCurrents(electrical_angle);
   unsigned long heterodyne_time=micros();
   unsigned long curr_pll_time=micros();
   Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
   prev_pll_time=curr_pll_time;
-  // calculate clarke transform
-  if(!current.c){
-      // if only two measured currents
-      i_alpha = current.a;  
-      i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
-  }else if(!current.a){
-      // if only two measured currents
-      float a = -current.c - current.b;
-      i_alpha = a;  
-      i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
-  }else if(!current.b){
-      // if only two measured currents
-      float b = -current.a - current.c;
-      i_alpha = current.a;  
-      i_beta = _1_SQRT3 * current.a + _2_SQRT3 * b;
-  } else {
-      // signal filtering using identity a + b + c = 0. Assumes measurement error is normally distributed.
-      float mid = (1.f/3) * (current.a + current.b + current.c);
-      float a = current.a - mid;
-      float b = current.b - mid;
-      i_alpha = a;
-      i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
-  }
+  // // calculate clarke transform
+  // if(!current.c){
+  //     // if only two measured currents
+  //     i_alpha = current.a;  
+  //     i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
+  // }else if(!current.a){
+  //     // if only two measured currents
+  //     float a = -current.c - current.b;
+  //     i_alpha = a;  
+  //     i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
+  // }else if(!current.b){
+  //     // if only two measured currents
+  //     float b = -current.a - current.c;
+  //     i_alpha = current.a;  
+  //     i_beta = _1_SQRT3 * current.a + _2_SQRT3 * b;
+  // } else {
+  //     // signal filtering using identity a + b + c = 0. Assumes measurement error is normally distributed.
+  //     float mid = (1.f/3) * (current.a + current.b + current.c);
+  //     float a = current.a - mid;
+  //     float b = current.b - mid;
+  //     i_alpha = a;
+  //     i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
+  // }
 
   float bemf = _motor->voltage.q - _motor->phase_resistance * _motor->current.q;
   if (fabs(bemf < bemf_threshold)){
@@ -107,8 +108,8 @@ void FluxObserverSensor::update() {
         
         float ct;
         float st;
-        _sincos(electrical_angle, &st, &ct);
-        i_qh=q_hp4.getHp(q_hp3.getHp(q_hp2.getHp(q_hp.getHp((i_beta * ct - i_alpha * st)-_motor->current_sp))));
+        //_sincos(electrical_angle, &st, &ct);
+        i_qh=q_hp4.getHp(q_hp3.getHp(q_hp2.getHp(q_hp.getHp((current.q)-_motor->current_sp))));
         //i_dh=filter_calc_d.getBp(i_alpha * ct + i_beta * st);
 
         
