@@ -43,8 +43,8 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   prev_pll_time=micros();
   sigma=0.0f;
   ka=1.0f;
-  kw=20.0f;
-  ktheta=2.0f;
+  kw=200.0f;
+  ktheta=5.0f;
   electrical_angle=0;
 }
 
@@ -68,7 +68,7 @@ void FluxObserverSensor::update() {
 
   // read current phase currents
   
-  current = _motor->current_sense->getFOCCurrents(electrical_angle);
+  current = _motor->current;
   unsigned long heterodyne_time=micros();
   unsigned long curr_pll_time=micros();
   Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
@@ -118,7 +118,7 @@ void FluxObserverSensor::update() {
         //delta_i_dh=d_lp.getLp(_motor->hfi_state*(i_dh-i_dh_prev));
         
         //atan_test=_atan2(i_qh-i_qh_prev,i_dh-i_dh_prev);
-        e=(q_lp.getLp((i_qh)*_cos(_normalizeAngle(motor->hfi_dt*_2PI/((1.0f/hfi_frequency)*1000000.0f)))));//ke*delta_i_qh;
+        e=(q_lp.getLp((i_qh)*_cos(_normalizeAngle(_motor->hfi_dt*_2PI/((1.0f/hfi_frequency)*1000000.0f)))));//ke*delta_i_qh;
 
         
         //Position Observer
