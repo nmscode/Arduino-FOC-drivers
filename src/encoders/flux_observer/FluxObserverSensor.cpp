@@ -44,7 +44,7 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   sigma=0.0f;
   ka=0.0f;
   kw=1.0f;
-  ktheta=0.0f;
+  ktheta=1.0f;
   electrical_angle=0;
 }
 
@@ -68,7 +68,7 @@ void FluxObserverSensor::update() {
 
   // read current phase currents
   
-  current = current_sense->getPhaseCurrents();//_motor->current;
+  current = _motor->current_sense->getPhaseCurrents();//;
   unsigned long heterodyne_time=micros();
   unsigned long curr_pll_time=micros();
   Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
@@ -110,7 +110,7 @@ void FluxObserverSensor::update() {
         float st;
         _sincos(_normalizeAngle(electrical_angle-_PI/4.0f), &st, &ct);
         i_qh=(i_beta * ct - i_alpha * st);//q_hp4.getHp(q_hp3.getHp(q_hp2.getHp(q_hp.getHp((current.q)-_motor->current_sp))));
-        i_dh=(i_alpha * ct + i_beta * st);;
+        i_dh=(i_alpha * ct + i_beta * st);
         //i_dh=filter_calc_d.getBp(i_alpha * ct + i_beta * st);
 
         
@@ -119,7 +119,7 @@ void FluxObserverSensor::update() {
         delta_i_dh=(i_dh-i_dh_prev);
         
         //atan_test=_atan2(i_qh-i_qh_prev,i_dh-i_dh_prev);
-        e=_motor->hfi_state*(delta_i_qh-delta_i_dh) //(q_lp.getLp((i_qh)*_cos(_normalizeAngle(_motor->hfi_dt*_2PI/((1.0f/hfi_frequency)*1000000.0f)))));//ke*delta_i_qh;
+        e=_motor->hfi_state*(delta_i_qh-delta_i_dh); //(q_lp.getLp((i_qh)*_cos(_normalizeAngle(_motor->hfi_dt*_2PI/((1.0f/hfi_frequency)*1000000.0f)))));//ke*delta_i_qh;
 
         
         //Position Observer
@@ -135,17 +135,17 @@ void FluxObserverSensor::update() {
         }
         accel+=ka*sigma*Ts;
         input=kw*sigma+accel;
-        wrotor = _constrain(0.001f*input+wrotor_prev,-10,10);
+        wrotor = _constrain(Ts*input+wrotor_prev,-10,10);
         second_integral_input=wrotor+ktheta*sigma;
-        theta_out = 1.0f*second_integral_input+theta_out_prev; //#1/s transfer function. just integration
+        theta_out = Ts*second_integral_input+theta_out_prev; //#1/s transfer function. just integration
         if(theta_out<-_PI){
           theta_out+=_2PI;
         }
         if(theta_out>_PI){
           theta_out-=_2PI;
         }
-        //i_qh_prev=i_qh;
-        //i_dh_prev=i_dh;
+        i_qh_prev=i_qh;
+        i_dh_prev=i_dh;
         //Shift values over
         wrotor_prev=wrotor;
         second_integral_input_prev=second_integral_input;
