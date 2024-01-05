@@ -12,20 +12,20 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   }
   float hpf_freq=1600.0f;
   float q_val=0.7;
-  q_hp = MultiFilter(1.0f/hpf_freq,q_val);
-  q_hp2 = MultiFilter(1.0f/hpf_freq,q_val);
-  q_hp3 = MultiFilter(1.0f/hpf_freq,q_val);
-  q_hp4 = MultiFilter(1.0f/hpf_freq,q_val);
+  q_hp = MultiFilter(hpf_freq,q_val);
+  q_hp2 = MultiFilter(hpf_freq,q_val);
+  q_hp3 = MultiFilter(hpf_freq,q_val);
+  q_hp4 = MultiFilter(hpf_freq,q_val);
 
   float lpf_freq=20.0f;
-  q_lp=MultiFilter(1.0f/lpf_freq,q_val);
-  q_lp2=MultiFilter(1.0f/lpf_freq,q_val);
-  q_lp3=MultiFilter(1.0f/lpf_freq,q_val);
-  q_lp4=MultiFilter(1.0f/lpf_freq,q_val);
+  q_lp=MultiFilter(lpf_freq,q_val);
+  q_lp2=MultiFilter(lpf_freq,q_val);
+  q_lp3=MultiFilter(lpf_freq,q_val);
+  q_lp4=MultiFilter(lpf_freq,q_val);
 
  
-  theta_lpf_sin=MultiFilter(1.0f/100.0f);
-  theta_lpf_cos=MultiFilter(1.0f/100.0f);
+  theta_lpf_sin=MultiFilter(100.0f);
+  theta_lpf_cos=MultiFilter(100.0f);
 
   // filter_calc_d = MultiFilter(1.0f/1500.0f);
   //d_lp=MultiFilter(1.0f/200.0f);
@@ -43,7 +43,7 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   prev_pll_time=micros();
   sigma=0.0f;
   ka=0.0f;
-  kw=10.0f;
+  kw=1.0f;
   ktheta=0.0f;
   electrical_angle=0;
 }
@@ -135,9 +135,9 @@ void FluxObserverSensor::update() {
         }
         accel+=ka*sigma*Ts;
         input=kw*sigma+accel;
-        wrotor = _constrain(0.1f*input+wrotor_prev,-10,10);
+        wrotor = _constrain(0.001f*input+wrotor_prev,-10,10);
         second_integral_input=wrotor+ktheta*sigma;
-        theta_out = Ts*second_integral_input+theta_out_prev; //#1/s transfer function. just integration
+        theta_out = 1.0f*second_integral_input+theta_out_prev; //#1/s transfer function. just integration
         if(theta_out<-_PI){
           theta_out+=_2PI;
         }
