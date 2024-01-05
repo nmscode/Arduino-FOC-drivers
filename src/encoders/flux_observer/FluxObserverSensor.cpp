@@ -42,9 +42,9 @@ FluxObserverSensor::FluxObserverSensor(BLDCMotor* m)
   second_integral_input_prev=0.0f;
   prev_pll_time=micros();
   sigma=0.0f;
-  ka=1.0f;
-  kw=200.0f;
-  ktheta=5.0f;
+  ka=0.0f;
+  kw=10.0f;
+  ktheta=0.0f;
   electrical_angle=0;
 }
 
@@ -68,34 +68,34 @@ void FluxObserverSensor::update() {
 
   // read current phase currents
   
-  current = _motor->current;
+  current = current_sense->getPhaseCurrents();//_motor->current;
   unsigned long heterodyne_time=micros();
   unsigned long curr_pll_time=micros();
   Ts=(curr_pll_time-prev_pll_time)/1000000.0f; //Sample time can be dynamically calculated
   prev_pll_time=curr_pll_time;
-  // // calculate clarke transform
-  // if(!current.c){
-  //     // if only two measured currents
-  //     i_alpha = current.a;  
-  //     i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
-  // }else if(!current.a){
-  //     // if only two measured currents
-  //     float a = -current.c - current.b;
-  //     i_alpha = a;  
-  //     i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
-  // }else if(!current.b){
-  //     // if only two measured currents
-  //     float b = -current.a - current.c;
-  //     i_alpha = current.a;  
-  //     i_beta = _1_SQRT3 * current.a + _2_SQRT3 * b;
-  // } else {
-  //     // signal filtering using identity a + b + c = 0. Assumes measurement error is normally distributed.
-  //     float mid = (1.f/3) * (current.a + current.b + current.c);
-  //     float a = current.a - mid;
-  //     float b = current.b - mid;
-  //     i_alpha = a;
-  //     i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
-  // }
+  // calculate clarke transform
+  if(!current.c){
+      // if only two measured currents
+      i_alpha = current.a;  
+      i_beta = _1_SQRT3 * current.a + _2_SQRT3 * current.b;
+  }else if(!current.a){
+      // if only two measured currents
+      float a = -current.c - current.b;
+      i_alpha = a;  
+      i_beta = _1_SQRT3 * a + _2_SQRT3 * current.b;
+  }else if(!current.b){
+      // if only two measured currents
+      float b = -current.a - current.c;
+      i_alpha = current.a;  
+      i_beta = _1_SQRT3 * current.a + _2_SQRT3 * b;
+  } else {
+      // signal filtering using identity a + b + c = 0. Assumes measurement error is normally distributed.
+      float mid = (1.f/3) * (current.a + current.b + current.c);
+      float a = current.a - mid;
+      float b = current.b - mid;
+      i_alpha = a;
+      i_beta = _1_SQRT3 * a + _2_SQRT3 * b;
+  }
 
   float bemf = _motor->voltage.q - _motor->phase_resistance * _motor->current.q;
   if (fabs(bemf < bemf_threshold)){
@@ -108,17 +108,18 @@ void FluxObserverSensor::update() {
         
         float ct;
         float st;
-        //_sincos(electrical_angle, &st, &ct);
-        i_qh=q_hp4.getHp(q_hp3.getHp(q_hp2.getHp(q_hp.getHp((current.q)-_motor->current_sp))));
+        _sincos(_normalizeAngle(electrical_angle-_PI/4.0f), &st, &ct);
+        i_qh=(i_beta * ct - i_alpha * st);//q_hp4.getHp(q_hp3.getHp(q_hp2.getHp(q_hp.getHp((current.q)-_motor->current_sp))));
+        i_dh=(i_alpha * ct + i_beta * st);;
         //i_dh=filter_calc_d.getBp(i_alpha * ct + i_beta * st);
 
         
 
-        //delta_i_qh=q_lp.getLp(_motor->hfi_state*(i_qh-i_qh_prev));
-        //delta_i_dh=d_lp.getLp(_motor->hfi_state*(i_dh-i_dh_prev));
+        delta_i_qh=(i_qh-i_qh_prev);
+        delta_i_dh=(i_dh-i_dh_prev);
         
         //atan_test=_atan2(i_qh-i_qh_prev,i_dh-i_dh_prev);
-        e=(q_lp.getLp((i_qh)*_cos(_normalizeAngle(_motor->hfi_dt*_2PI/((1.0f/hfi_frequency)*1000000.0f)))));//ke*delta_i_qh;
+        e=_motor->hfi_state*(delta_i_qh-delta_i_dh) //(q_lp.getLp((i_qh)*_cos(_normalizeAngle(_motor->hfi_dt*_2PI/((1.0f/hfi_frequency)*1000000.0f)))));//ke*delta_i_qh;
 
         
         //Position Observer
@@ -134,7 +135,7 @@ void FluxObserverSensor::update() {
         }
         accel+=ka*sigma*Ts;
         input=kw*sigma+accel;
-        wrotor = Ts*input+wrotor_prev;
+        wrotor = _constrain(0.1f*input+wrotor_prev,-10,10);
         second_integral_input=wrotor+ktheta*sigma;
         theta_out = Ts*second_integral_input+theta_out_prev; //#1/s transfer function. just integration
         if(theta_out<-_PI){
